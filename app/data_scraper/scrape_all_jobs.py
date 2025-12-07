@@ -1,23 +1,65 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from __future__ import annotations
 
 import csv
 import json
 import os
 import time
 from pathlib import Path
+from typing import List
 
-from job_scraper import scrape_job_details
+from .job_scraper import scrape_job_details
 
 
 
 
-CSV_PATH = "job_data.csv"  # Your CSV file with job listings
-OUTPUT_DIR = Path("job_details")
-OUTPUT_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent
+CSV_PATH = BASE_DIR / "job_data.csv"  # Your CSV file with job listings
+OUTPUT_DIR = BASE_DIR / "job_details"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-JSONL_PATH = "job_details.jsonl"
+JSONL_PATH = BASE_DIR / "job_details.jsonl"
+
+
+def scrape_jobs(query: str, limit: int = 20) -> list[dict]:
+    """
+    Lightweight helper used by the FastAPI endpoint.
+
+    It reads the locally cached CSV job listings and returns rows whose title
+    contains the provided query (case insensitive). When no query is supplied,
+    it simply returns the first ``limit`` rows.
+    """
+
+    if not CSV_PATH.exists():
+        return []
+
+    normalized_query = (query or "").strip().lower()
+    results: list[dict] = []
+
+    with open(CSV_PATH, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            job_title = (row.get("Job Title") or "").strip()
+            company = (row.get("Company Name") or "").strip()
+            location = (row.get("Location") or "").strip()
+            url = (row.get("Job URL") or "").strip()
+
+            if normalized_query and normalized_query not in job_title.lower():
+                continue
+
+            results.append(
+                {
+                    "title": job_title,
+                    "company": company,
+                    "location": location,
+                    "url": url,
+                }
+            )
+
+            if len(results) >= limit:
+                break
+
+    return results
 
 
 def extract_job_id(url: str) -> str:
@@ -30,7 +72,7 @@ def extract_job_id(url: str) -> str:
     return str(hash(url))[-8:]
 
 
-def load_urls_from_csv(path: str):
+def load_urls_from_csv(path: Path) -> List[str]:
     """Reads job URLs from CSV file (expects the 4th column to be the URL)."""
     urls = []
     with open(path, newline="", encoding="utf-8") as f:
@@ -42,7 +84,7 @@ def load_urls_from_csv(path: str):
     return urls
 
 
-def append_to_jsonl(data: dict, jsonl_path: str):
+def append_to_jsonl(data: dict, jsonl_path: Path) -> None:
     """Appends a dictionary as a JSON line into a .jsonl file."""
     with open(jsonl_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(data, ensure_ascii=False) + "\n")

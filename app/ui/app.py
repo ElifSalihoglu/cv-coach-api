@@ -61,35 +61,57 @@ job_desc = st.text_area(
     height=150
 )
 
+# ---------------------------------
+# 3) SEARCH JOBS SECTION 
+# ---------------------------------
+SCRAPER_API_URL = "http://localhost:9001/search" 
 
-# ---------------------------------
-# 3) SEARCH JOBS SECTION (New)
-# ---------------------------------
 st.header("🔍 Search Jobs")
 
-st.write("Use this section to search job postings based on keywords. Later this will be connected to your scraper.")
+st.write("Search job postings using your scraper API.")
 
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    search_query = st.text_input("Search for job roles, keywords, or locations", placeholder="e.g., AI Engineer, Berlin")
+    search_query = st.text_input("Job title, keywords, etc.", placeholder="e.g., AI Engineer")
 
 with col2:
     search_button = st.button("Search Jobs")
 
-# Placeholder for job results
+# Placeholder for results
 job_results_box = st.empty()
 
 if search_button:
     if not search_query:
         job_results_box.warning("Please enter a search query before searching.")
     else:
-        # Placeholder response until scraper is connected
-        job_results_box.info(
-            f"Searching job boards for: **{search_query}**\n\n"
-            "This will later display results from your scraping engine."
-        )
+        with st.spinner("Searching job boards..."):
+            try:
+                params = {"query": search_query}
+                response = requests.get(SCRAPER_API_URL, params=params)
 
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get("results", [])
+
+                    if not results:
+                        job_results_box.info("No jobs found for your search.")
+                    else:
+                        st.subheader("📌 Job Results")
+
+                        for job in results:
+                            st.markdown(f"""
+                                ### [{job.get('title')}]({job.get('url')})
+                                **Company:** {job.get('company')}  
+                                **Location:** {job.get('location')}  
+                                **Snippet:** {job.get('snippet')}
+                                ---
+                            """)
+                else:
+                    job_results_box.error(f"Scraper API error: {response.status_code}")
+
+            except Exception as e:
+                job_results_box.error(f"Failed connecting to scraper API: {e}")
 
 # ---------------------------------
 # 4) Optimization section
