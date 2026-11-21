@@ -1,34 +1,35 @@
 """
-Centralized OpenAI client bootstrapper that exposes a single AsyncOpenAI
-instance plus the active model name. This keeps the integration surface small
-and guarantees that downstream services all share the same configuration.
+Builds the OpenAI client from environment variables.
+
+Importing this module never fails: a missing API key only means the CV
+coach is unavailable (the route returns 503), while /health and the local
+tests keep working.
 """
 
 from __future__ import annotations
 
 import os
 
-from dotenv import load_dotenv
 import openai
+from dotenv import load_dotenv
 
 load_dotenv()
 
-# Required configuration ----------------------------------------------------
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
+REQUEST_TIMEOUT_SECONDS = 30.0
+MAX_RETRIES = 2
 
-if not OPENAI_API_KEY:
-    raise RuntimeError(
-        "Missing OPENAI_API_KEY in environment. "
-        "Add it to your .env file or export it before running the app."
+
+def create_openai_client() -> openai.AsyncOpenAI | None:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    return openai.AsyncOpenAI(
+        api_key=api_key,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+        max_retries=MAX_RETRIES,
     )
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-mini")
 
-# Shared AsyncOpenAI client -------------------------------------------------
-openai_client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-
-__all__ = [
-    "OPENAI_API_KEY",
-    "OPENAI_MODEL",
-    "openai_client",
-]
+def get_openai_model() -> str:
+    return os.getenv("OPENAI_MODEL") or DEFAULT_OPENAI_MODEL

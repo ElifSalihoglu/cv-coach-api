@@ -1,8 +1,10 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.api.v1.routes_cv import get_cv_coach
 from app.models.schemas import CVOptimizeRequest, CVOptimizeResponse
+from app.services.llm_client import LLMOutputError, LLMTimeoutError, LLMUnavailableError
 
 class FakeCVCoach:
     async def optimize(self, request: CVOptimizeRequest) -> CVOptimizeResponse:
@@ -58,3 +60,37 @@ def test_optimize_returns_503_when_coach_is_unavailable(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "CV coach is unavailable."
+
+
+class FailingCVCoach:
+    def __init__(self, error):
+        self.error = error
+
+    async def optimize(self, request: CVOptimizeRequest) -> CVOptimizeResponse:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status"),
+    [
+        (LLMTimeoutError("timeout"), 504),
+        (LLMUnavailableError("unavailable"), 503),
+        (LLMOutputError("invalid output"), 502),
+    ],
+    ids=["timeout", "unavailable", "invalid-output"],
+)
+def test_optimize_maps_llm_errors_to_http_status(monkeypatch, error, expected_status):
+    monkeypatch.setitem(
+        app.dependency_overrides, get_cv_coach, lambda: FailingCVCoach(error)
+    )
+    payload = {
+        "job_title": "AI Engineer",
+        "job_description": "Build and maintain Python APIs.",
+        "current_bullets": ["Built a Python API for internal reporting."],
+    }
+
+    with TestClient(app) as client:
+        response = client.post("/v1/cv/optimize", json=payload)
+
+    assert response.status_code == expected_status
+    assert response.json()["detail"]
