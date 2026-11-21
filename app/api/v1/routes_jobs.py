@@ -25,8 +25,14 @@ class JobSearchOptimizeResponse(BaseModel):
 
 def get_scrapers() -> tuple[SearchFn, DetailFn]:
     """Selenium is imported lazily so the API starts (and tests run) without it."""
-    from app.data_scraper.job_scraper import scrape_job_details
-    from app.data_scraper.scraper import scrape_indeed_jobs
+    try:
+        from app.data_scraper.job_scraper import scrape_job_details
+        from app.data_scraper.scraper import scrape_indeed_jobs
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Job scraping is unavailable: install selenium (pip install -r requirements.txt).",
+        ) from exc
 
     return scrape_indeed_jobs, scrape_job_details
 

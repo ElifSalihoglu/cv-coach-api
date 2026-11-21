@@ -113,6 +113,29 @@ def test_search_failure_returns_502(monkeypatch):
     assert response.status_code == 502
 
 
+def test_missing_scraper_dependency_returns_503_not_crash(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name.startswith("app.data_scraper"):
+            raise ModuleNotFoundError("No module named 'selenium'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: RecordingCoach())
+    app.dependency_overrides.pop(get_scrapers, None)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/jobs/optimize", json={"query": "AI", "cv_bullets": CV_BULLETS}
+        )
+
+    assert response.status_code == 503
+    assert "selenium" in response.json()["detail"]
+
+
 def test_extract_bullets_strips_markers_and_drops_short_lines():
     text = "Jane Doe\nEXPERIENCE\n• Built ML pipelines using Python and FastAPI.\n- Reduced latency by 30% across services.\n2021-2023\n"
 
