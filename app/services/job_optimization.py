@@ -2,6 +2,7 @@ import logging
 from typing import Iterable
 
 from app.logging_utils import job_order_var, log_event
+from app.models.cv_document import StructuredCV
 from app.models.schemas import (
     CVOptimizeRequest,
     JobOptimizationResult,
@@ -17,9 +18,12 @@ async def optimize_for_jobs(
     coach: CVCoach,
     jobs: Iterable[MatchedJob],
     cv_bullets: list[str],
+    cv: StructuredCV | None = None,
 ) -> list[JobOptimizationResult]:
     """
-    Run one optimization per job, always from the user's original CV bullets.
+    Run one optimization per job, always from the user's original CV bullets,
+    or, when a confirmed structured `cv` is given, one tailored CV per job
+    (one model call each; the original `cv` is never modified).
 
     Results keep the input (search) order. Jobs without a description are not
     sent to the coach. A failure in one job is recorded on that job's result
@@ -38,14 +42,18 @@ async def optimize_for_jobs(
             )
             continue
 
-        request = CVOptimizeRequest(
-            job_title=job.title,
-            job_description=job.job_description,
-            current_bullets=list(cv_bullets),
-        )
         token = job_order_var.set(order)
         try:
-            optimization = await coach.optimize(request)
+            if cv is not None:
+                tailored = await coach.tailor(cv, job.title, job.job_description)
+            else:
+                optimization = await coach.optimize(
+                    CVOptimizeRequest(
+                        job_title=job.title,
+                        job_description=job.job_description,
+                        current_bullets=list(cv_bullets),
+                    )
+                )
         except Exception as exc:
             if not isinstance(exc, LLMError):
                 log_event(
@@ -64,10 +72,20 @@ async def optimize_for_jobs(
         finally:
             job_order_var.reset(token)
 
-        results.append(
-            JobOptimizationResult(
-                job=job, status="optimized", optimization=optimization
+        if cv is not None:
+            results.append(
+                JobOptimizationResult(
+                    job=job,
+                    status="optimized",
+                    tailored_cv=tailored.cv,
+                    tailoring_warnings=tailored.warnings,
+                )
             )
-        )
+        else:
+            results.append(
+                JobOptimizationResult(
+                    job=job, status="optimized", optimization=optimization
+                )
+            )
 
     return results

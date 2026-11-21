@@ -1,6 +1,8 @@
 from typing import Annotated, List
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.cv_document import StructuredCV
+
 
 class CVOptimizeRequest(BaseModel):
     """
@@ -130,3 +132,6 @@ class JobOptimizationResult(BaseModel):
     status: str = Field(..., pattern="^(optimized|missing_description|failed)$")
     error: str | None = None
     optimization: CVOptimizeResponse | None = None
+    # Set instead of `optimization` when the request carried a structured CV.
+    tailored_cv: StructuredCV | None = None
+    tailoring_warnings: List[str] = Field(default_factory=list)

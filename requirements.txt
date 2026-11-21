@@ -8,3 +8,4 @@ python-docx>=0.8.11
 selenium>=4.14.0
 fastapi==0.115.12
 uvicorn==0.34.2
+fpdf2>=2.8

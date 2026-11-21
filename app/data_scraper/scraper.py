@@ -13,6 +13,12 @@ from selenium.webdriver.support import expected_conditions as EC
 
 import time
 
+from app.services.search_errors import (
+    HumanVerificationRequired,
+    SearchTimeout,
+    looks_like_verification,
+)
+
 INDEED_BASE = "https://de.indeed.com"
 
 
@@ -21,6 +27,15 @@ def _card_text(card, selector: str) -> str:
         return card.find_element(By.CSS_SELECTOR, selector).get_attribute("textContent").strip()
     except NoSuchElementException:
         return ""
+
+
+def _verification_shown(driver) -> bool:
+    """Detect a human-check page. We only detect it; we never try to pass it."""
+    try:
+        body = driver.find_element(By.TAG_NAME, "body").text[:2000]
+        return looks_like_verification(driver.title, driver.current_url, body)
+    except WebDriverException:
+        return False
 
 
 REASON_OPEN_FAILED = "detail_open_failed"  # the job's detail pane never showed up
@@ -59,6 +74,8 @@ def _read_description(driver, link, job_title: str) -> tuple[str, str | None]:
     try:
         return WebDriverWait(driver, 10).until(pane_shows_job), None
     except TimeoutException:
+        if _verification_shown(driver):  # a check can appear in the middle of a search
+            raise HumanVerificationRequired()
         return "", (REASON_EMPTY if pane_opened else REASON_OPEN_FAILED)
 
 
@@ -73,15 +90,26 @@ def scrape_indeed_jobs_with_details(
     For logging, each dict also has detail_duration_ms and, when the
     description is missing, detail_error (a safe reason code). Cards without a
     usable job id are returned with url "" so the caller can count them.
+
+    Raises HumanVerificationRequired when Indeed shows a human check (the
+    search stops at once and the browser is closed) and SearchTimeout when the
+    results page does not load for any other reason.
     """
     driver = webdriver.Chrome()
     try:
         driver.get(
             f"{INDEED_BASE}/jobs?q={quote_plus(title)}&l={quote_plus(f'{city}, {country}')}"
         )
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.job_seen_beacon"))
-        )
+        if _verification_shown(driver):
+            raise HumanVerificationRequired()
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.job_seen_beacon"))
+            )
+        except TimeoutException:
+            if _verification_shown(driver):
+                raise HumanVerificationRequired() from None
+            raise SearchTimeout() from None
 
         jobs: list[dict] = []
         usable = 0
@@ -119,7 +147,11 @@ def scrape_indeed_jobs_with_details(
             jobs.append(job)
         return jobs
     finally:
-        driver.quit()
+        # Always close the browser, also when the search stops early.
+        try:
+            driver.quit()
+        except WebDriverException:
+            pass
 
 def scrape_indeed_jobs(title: str, city: str, country: str):
     driver = webdriver.Chrome()

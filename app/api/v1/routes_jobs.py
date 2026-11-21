@@ -2,13 +2,15 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.v1.routes_cv import get_cv_coach
 from app.logging_utils import log_event
+from app.models.cv_document import StructuredCV
 from app.models.schemas import JobOptimizationResult
 from app.services.cv_coach import CVCoach
 from app.services.job_search_flow import SearchFn, search_and_optimize
+from app.services.search_errors import HumanVerificationRequired, SearchTimeout
 
 router = APIRouter(prefix="/v1/jobs")
 logger = logging.getLogger("app.jobs")
@@ -18,8 +20,17 @@ class JobSearchOptimizeRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Role to search for.")
     city: str = Field("Berlin", min_length=1)
     country: str = Field("Germany", min_length=1)
-    cv_bullets: list[str] = Field(..., min_length=1, description="Original CV bullets.")
+    cv_bullets: list[str] = Field(default_factory=list, description="Original CV bullets.")
+    cv: StructuredCV | None = Field(
+        None, description="Confirmed structured CV; gives one tailored CV per job."
+    )
     limit: int = Field(5, ge=1, le=10, description="Max jobs to process.")
+
+    @model_validator(mode="after")
+    def _needs_cv_or_bullets(self):
+        if self.cv is None and not self.cv_bullets:
+            raise ValueError("Provide either `cv` or `cv_bullets`.")
+        return self
 
 
 class JobSearchOptimizeResponse(BaseModel):
@@ -68,8 +79,16 @@ async def optimize_for_search(
             city=request.city,
             country=request.country,
             cv_bullets=request.cv_bullets,
+            cv=request.cv,
             limit=request.limit,
         )
+    except (HumanVerificationRequired, SearchTimeout) as exc:
+        # Different causes, different next steps for the user.
+        status = 503 if isinstance(exc, HumanVerificationRequired) else 504
+        raise HTTPException(
+            status_code=status,
+            detail={"code": exc.reason_code, "message": exc.user_message},
+        ) from exc
     except Exception as exc:
         if not getattr(exc, "already_logged", False):
             log_event(
@@ -77,7 +96,11 @@ async def optimize_for_search(
                 outcome="error", reason="flow_error", exception=type(exc).__name__,
             )
         raise HTTPException(
-            status_code=502, detail=f"Job search failed: {type(exc).__name__}"
+            status_code=502,
+            detail={
+                "code": "search_failed",
+                "message": f"Job search failed: {type(exc).__name__}.",
+            },
         ) from exc
 
     return JobSearchOptimizeResponse(results=results)

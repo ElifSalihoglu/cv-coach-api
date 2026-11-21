@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.models.cv_document import CVParseRequest, CVParseResponse
 from app.models.schemas import CVOptimizeRequest, CVOptimizeResponse
 from app.services.cv_coach import CVCoach, OpenAICVCoach
 from app.services.llm_client import (
@@ -35,6 +36,24 @@ async def optimize_cv(
 
     try:
         return await coach.optimize(request)
+    except LLMTimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except LLMUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except LLMOutputError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+@router.post("/parse", response_model=CVParseResponse)
+async def parse_cv(
+    request: CVParseRequest,
+    coach: Annotated[CVCoach | None, Depends(get_cv_coach)],
+) -> CVParseResponse:
+    """Structure CV text once; the user reviews and confirms the result."""
+    if coach is None:
+        raise HTTPException(status_code=503, detail="CV coach is unavailable.")
+
+    try:
+        return await coach.parse(request.cv_text)
     except LLMTimeoutError as exc:
         raise HTTPException(status_code=504, detail=str(exc)) from exc
     except LLMUnavailableError as exc:

@@ -1,10 +1,10 @@
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, TypeVar
 
 import openai
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.logging_utils import log_event
 from app.models.schemas import GeneratedCVContent
@@ -12,6 +12,8 @@ from app.models.schemas import GeneratedCVContent
 logger = logging.getLogger("app.llm")
 
 TEMPERATURE = 0.3
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class LLMError(Exception):
@@ -58,10 +60,14 @@ class LLMClient:
         self._model = model
 
     async def generate(
-        self, system_prompt: str, user_content: dict[str, Any]
-    ) -> GeneratedCVContent:
+        self,
+        system_prompt: str,
+        user_content: dict[str, Any],
+        output_model: type[T] = GeneratedCVContent,  # type: ignore[assignment]
+    ) -> T:
         started = time.perf_counter()
-        user_message = json.dumps(user_content)
+        # ensure_ascii=False keeps Turkish characters as they are in the prompt.
+        user_message = json.dumps(user_content, ensure_ascii=False)
         # Sizes and settings only, never the prompt or the content itself.
         log_event(
             logger, logging.INFO, "llm_call_start",
@@ -70,7 +76,7 @@ class LLMClient:
         )
         details: dict[str, object] = {}
         try:
-            result = await self._generate(system_prompt, user_message, details)
+            result = await self._generate(system_prompt, user_message, details, output_model)
         except LLMError as exc:
             # The single place where an LLM failure is logged.
             log_event(
@@ -79,11 +85,12 @@ class LLMClient:
                 duration_ms=round((time.perf_counter() - started) * 1000), **details,
             )
             raise
-        details.update(
-            bullets_out=len(result.improved_bullets),
-            summary_chars=len(result.summary),
-            headline_chars=len(result.linkedin_headline),
-        )
+        if isinstance(result, GeneratedCVContent):
+            details.update(
+                bullets_out=len(result.improved_bullets),
+                summary_chars=len(result.summary),
+                headline_chars=len(result.linkedin_headline),
+            )
         log_event(
             logger, logging.INFO, "llm_call",
             model=self._model, outcome="ok",
@@ -96,7 +103,8 @@ class LLMClient:
         system_prompt: str,
         user_message: str,
         details: dict[str, object],
-    ) -> GeneratedCVContent:
+        output_model: type[T],
+    ) -> T:
         try:
             response = await self._client.chat.completions.create(
                 model=self._model,
@@ -141,6 +149,6 @@ class LLMClient:
             raise LLMOutputError("The language model returned an empty answer.", "llm_empty_output")
 
         try:
-            return GeneratedCVContent.model_validate_json(message.content)
+            return output_model.model_validate_json(message.content)
         except ValidationError as exc:
             raise LLMOutputError("The language model returned invalid content.") from exc

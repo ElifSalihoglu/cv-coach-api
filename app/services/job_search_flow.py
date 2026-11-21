@@ -4,6 +4,7 @@ import time
 from typing import Callable
 
 from app.logging_utils import log_event
+from app.models.cv_document import StructuredCV
 from app.models.schemas import JobOptimizationResult, SearchResultJob
 from app.services.cv_coach import CVCoach
 from app.services.job_matching import job_key, match_jobs
@@ -29,6 +30,7 @@ async def search_and_optimize(
     city: str,
     country: str,
     cv_bullets: list[str],
+    cv: StructuredCV | None = None,
     limit: int = 5,
     source: str = "indeed",
 ) -> list[JobOptimizationResult]:
@@ -49,7 +51,8 @@ async def search_and_optimize(
     except Exception as exc:
         log_event(
             logger, logging.ERROR, "job_search",
-            source=source, outcome="error", reason="scraper_error",
+            source=source, outcome="error",
+            reason=getattr(exc, "reason_code", "scraper_error"),
             exception=type(exc).__name__, duration_ms=_ms(started),
         )
         exc.already_logged = True  # tells the route not to log it a second time
@@ -99,7 +102,7 @@ async def search_and_optimize(
                 duration_ms=duration,
             )
 
-    optimized = await optimize_for_jobs(coach, matched, cv_bullets)
+    optimized = await optimize_for_jobs(coach, matched, cv_bullets, cv)
 
     counts = {"optimized": 0, "missing_description": 0, "failed": 0}
     for item in optimized:
