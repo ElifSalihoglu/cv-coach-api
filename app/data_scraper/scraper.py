@@ -23,20 +23,27 @@ def _card_text(card, selector: str) -> str:
         return ""
 
 
-def _read_description(driver, link, job_title: str) -> str:
+REASON_OPEN_FAILED = "detail_open_failed"  # the job's detail pane never showed up
+REASON_EMPTY = "description_empty"  # the pane opened, but had no description text
+
+
+def _read_description(driver, link, job_title: str) -> tuple[str, str | None]:
     """
     Click a result card and read the full description from the results page's
     side pane. Opening /viewjob in a fresh browser redirects to Indeed's sign-in
     page, but the side pane works without an account.
-    Returns "" when the pane does not show this job's description in time.
+
+    Returns (description, reason). reason is None on success, otherwise a safe
+    code telling "pane could not be opened" apart from "pane opened, empty".
     """
-    driver.execute_script("arguments[0].scrollIntoView({block:'center'})", link)
-    link.click()
+    pane_opened = False
 
     def pane_shows_job(drv):
+        nonlocal pane_opened
         panes = drv.find_elements(By.ID, "jobsearch-ViewjobPaneWrapper")
         if not panes or job_title[:40] not in panes[0].text:
             return False
+        pane_opened = True
         desc = panes[0].find_elements(
             By.CSS_SELECTOR, ".simple-job-description-html, #jobDescriptionText"
         )
@@ -44,9 +51,15 @@ def _read_description(driver, link, job_title: str) -> str:
         return text or False
 
     try:
-        return WebDriverWait(driver, 10).until(pane_shows_job)
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", link)
+        link.click()
+    except WebDriverException:  # stale element, click intercepted, ...
+        return "", REASON_OPEN_FAILED
+
+    try:
+        return WebDriverWait(driver, 10).until(pane_shows_job), None
     except TimeoutException:
-        return ""
+        return "", (REASON_EMPTY if pane_opened else REASON_OPEN_FAILED)
 
 
 def scrape_indeed_jobs_with_details(
@@ -56,6 +69,10 @@ def scrape_indeed_jobs_with_details(
     One browser session: search, then read each result's full description from
     the side pane. Each dict has title, company, location, url (canonical
     /viewjob?jk=... link) and full_description ("" if it could not be read).
+
+    For logging, each dict also has detail_duration_ms and, when the
+    description is missing, detail_error (a safe reason code). Cards without a
+    usable job id are returned with url "" so the caller can count them.
     """
     driver = webdriver.Chrome()
     try:
@@ -67,33 +84,39 @@ def scrape_indeed_jobs_with_details(
         )
 
         jobs: list[dict] = []
+        usable = 0
         for card in driver.find_elements(By.CSS_SELECTOR, "div.job_seen_beacon"):
-            if len(jobs) >= limit:
+            if usable >= limit:
                 break
             try:
                 link = card.find_element(By.CSS_SELECTOR, "a.jcs-JobTitle")
                 job_key = link.get_attribute("data-jk")
-                if not job_key:
-                    continue
                 job_title = link.get_attribute("textContent").strip()
                 company = _card_text(card, '[data-testid="company-name"]')
                 location = _card_text(card, '[data-testid="text-location"]')
-                try:
-                    description = _read_description(driver, link, job_title)
-                except WebDriverException:  # stale element, click intercepted, ...
-                    description = ""
             except (NoSuchElementException, StaleElementReferenceException):
+                job_key = None
+            if not job_key:
+                jobs.append(
+                    {"title": "", "company": "", "location": "", "url": "",
+                     "full_description": ""}
+                )
                 continue
 
-            jobs.append(
-                {
-                    "title": job_title,
-                    "company": company,
-                    "location": location,
-                    "url": f"{INDEED_BASE}/viewjob?jk={job_key}",
-                    "full_description": description,
-                }
-            )
+            usable += 1
+            detail_started = time.perf_counter()
+            description, reason = _read_description(driver, link, job_title)
+            job = {
+                "title": job_title,
+                "company": company,
+                "location": location,
+                "url": f"{INDEED_BASE}/viewjob?jk={job_key}",
+                "full_description": description,
+                "detail_duration_ms": round((time.perf_counter() - detail_started) * 1000),
+            }
+            if reason:
+                job["detail_error"] = reason
+            jobs.append(job)
         return jobs
     finally:
         driver.quit()
