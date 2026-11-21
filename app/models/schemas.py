@@ -1,5 +1,5 @@
-from typing import List
-from pydantic import BaseModel, Field
+from typing import Annotated, List
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CVOptimizeRequest(BaseModel):
@@ -48,9 +48,13 @@ class GeneratedCVContent(BaseModel):
     retrieved_jobs is filled by our own code, never by the model.
     """
 
-    improved_bullets: List[str]
-    summary: str
-    linkedin_headline: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    improved_bullets: List[Annotated[str, Field(min_length=1)]] = Field(
+        ..., min_length=1
+    )
+    summary: str = Field(..., min_length=1)
+    linkedin_headline: str = Field(..., min_length=1, max_length=120)
 
 
 class CVOptimizeResponse(BaseModel):
