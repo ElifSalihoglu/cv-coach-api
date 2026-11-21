@@ -42,6 +42,17 @@ class RetrievedJobExample(BaseModel):
     job_url: str = Field(..., description="URL to the job posting.")
 
 
+class GeneratedCVContent(BaseModel):
+    """
+    The part of the response the LLM is allowed to generate.
+    retrieved_jobs is filled by our own code, never by the model.
+    """
+
+    improved_bullets: List[str]
+    summary: str
+    linkedin_headline: str
+
+
 class CVOptimizeResponse(BaseModel):
     """
     Response returned by /v1/cv/optimize.
