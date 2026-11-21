@@ -94,3 +94,39 @@ class JobListing(BaseModel):
     company_name: str = Field(..., description="Company name from the job listing.")
     location: str = Field(..., description="Location string from the job listing.")
     url: str = Field(..., description="URL pointing to the job listing page.")
+
+
+class SearchResultJob(BaseModel):
+    """One card from a job-board search result page (no full description yet)."""
+
+    title: str
+    company: str
+    location: str
+    url: str
+
+
+class MatchedJob(BaseModel):
+    """
+    A search result joined with its scraped detail page.
+    status is "ready" when a non-empty full description was found,
+    otherwise "missing_description" so the UI can show it and move on.
+    """
+
+    title: str
+    company: str
+    location: str
+    source_url: str
+    job_description: str = ""
+    status: str = Field(..., pattern="^(ready|missing_description)$")
+
+
+class JobOptimizationResult(BaseModel):
+    """
+    Outcome for one job in a search: which job it is, what happened, and
+    the suggestions (only when status is "optimized").
+    """
+
+    job: MatchedJob
+    status: str = Field(..., pattern="^(optimized|missing_description|failed)$")
+    error: str | None = None
+    optimization: CVOptimizeResponse | None = None
