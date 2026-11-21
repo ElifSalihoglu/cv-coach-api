@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from app.api.v1.routes_cv import get_cv_coach
 from app.models.schemas import JobOptimizationResult
 from app.services.cv_coach import CVCoach
-from app.services.job_search_flow import DetailFn, SearchFn, search_and_optimize
+from app.services.job_search_flow import SearchFn, search_and_optimize
 
 router = APIRouter(prefix="/v1/jobs")
 
@@ -23,34 +23,31 @@ class JobSearchOptimizeResponse(BaseModel):
     results: list[JobOptimizationResult]
 
 
-def get_scrapers() -> tuple[SearchFn, DetailFn]:
+def get_job_search() -> SearchFn:
     """Selenium is imported lazily so the API starts (and tests run) without it."""
     try:
-        from app.data_scraper.job_scraper import scrape_job_details
-        from app.data_scraper.scraper import scrape_indeed_jobs
+        from app.data_scraper.scraper import scrape_indeed_jobs_with_details
     except ImportError as exc:
         raise HTTPException(
             status_code=503,
             detail="Job scraping is unavailable: install selenium (pip install -r requirements.txt).",
         ) from exc
 
-    return scrape_indeed_jobs, scrape_job_details
+    return scrape_indeed_jobs_with_details
 
 
 @router.post("/optimize", response_model=JobSearchOptimizeResponse)
 async def optimize_for_search(
     request: JobSearchOptimizeRequest,
     coach: Annotated[CVCoach | None, Depends(get_cv_coach)],
-    scrapers: Annotated[tuple[SearchFn, DetailFn], Depends(get_scrapers)],
+    search: Annotated[SearchFn, Depends(get_job_search)],
 ) -> JobSearchOptimizeResponse:
     if coach is None:
         raise HTTPException(status_code=503, detail="CV coach is unavailable.")
 
-    search, fetch_detail = scrapers
     try:
         results = await search_and_optimize(
             search=search,
-            fetch_detail=fetch_detail,
             coach=coach,
             query=request.query,
             city=request.city,
