@@ -82,7 +82,7 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 }
 .search-main h1 { margin: 0; font-size: 1.8rem; }
 .search-form { display: grid; grid-template-columns: 1.6fr 1.2fr auto; gap: 12px; align-items: end; }
-.search-form button.primary { height: 44px; padding-inline: 22px; }
+.search-form button.primary { height: 44px; padding-inline: 22px; white-space: nowrap; }
 .cv-card { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
 .cv-card h2 { margin: 0 0 6px; font-size: 1rem; }
 .cv-card p { margin: 0 0 10px; }
@@ -170,3 +170,22 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
   .button-row button { flex: 1; }
   .cv-sheet { padding: 20px 16px; }
 }
+
+/* ---- what changed ---- */
+.changes { margin: 12px 0 0; }
+.changes summary { cursor: pointer; font-weight: 700; }
+.changes ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.change { padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+.change p { margin: 0 0 4px; }
+.change-where { font-weight: 700; font-size: .9rem; }
+.change-detail { color: var(--accent); font-size: .85rem; font-weight: 600; }
+.change-before { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--border); }
+.change-after { color: var(--text); }
+.tag {
+  display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; padding: 0 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent);
+  text-decoration: none;
+}
+.changes-none { margin: 12px 0 0; color: var(--muted); }
+.cv-sheet .is-changed { background: #eef1fe; box-shadow: -4px 0 0 #2f4cdd; padding-left: 6px; border-radius: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

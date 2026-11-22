@@ -7,7 +7,11 @@ from app.main import app
 from app.models.cv_document import StructuredCV, TailoredCVResult
 from app.services.llm_client import LLMOutputError, LLMTimeoutError, LLMUnavailableError
 
-CV = {"name": "Elçin Yıldız", "summary": "Original summary.", "skills": ["Python"]}
+CV = {
+    "name": "Elçin Yıldız", "summary": "Original summary.", "skills": ["Python"],
+    "experiences": [{"id": "exp1", "employer": "Acme", "title": "Engineer",
+                     "bullets": [{"id": "exp1.b1", "text": "Built a billing API."}]}],
+}
 
 
 class FakeCoach:
@@ -21,7 +25,7 @@ class FakeCoach:
             raise self.error
         return TailoredCVResult(
             cv=cv.model_copy(update={"summary": f"Tailored for {job_title}."}),
-            warnings=["note"],
+            warnings=["exp1.b1: rewrite reverted (new numbers 40)"],
         )
 
 
@@ -40,7 +44,11 @@ def test_tailors_once_and_returns_cv_and_warnings(monkeypatch):
     body = response.json()
     assert body["cv"]["summary"] == "Tailored for AI Engineer."
     assert body["cv"]["name"] == "Elçin Yıldız"
-    assert body["warnings"] == ["note"]
+    assert body["warnings"] == ["Bullet 1 at Acme: rewrite reverted (new numbers 40)"]
+    assert body["changes"] == [{
+        "kind": "summary", "id": "summary", "where": "Summary",
+        "before": "Original summary.", "after": "Tailored for AI Engineer.", "detail": "",
+    }]
     assert coach.calls == [("Elçin Yıldız", "AI Engineer", "Build agents.")]
 
 

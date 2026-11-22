@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { fetchCvPdf, saveBlob } from "../api";
 import type { FoundJob, TailorState } from "../types";
+import { ChangesList } from "./ChangesList";
 import { CvPreview } from "./CvPreview";
 
 interface Props {
@@ -77,6 +78,7 @@ export function JobDetail({ job, state, hasCv, onTailor }: Props) {
                 <button type="button" onClick={downloadPdf}>Try again</button>
               </div>
             )}
+            <ChangesList changes={state.changes} />
             {state.warnings.length > 0 && (
               <details className="notes">
                 <summary>Notes about this CV ({state.warnings.length})</summary>
@@ -92,7 +94,10 @@ export function JobDetail({ job, state, hasCv, onTailor }: Props) {
           <button type="button" className="link-button" onClick={() => setPreviewing(false)}>
             Back to job description
           </button>
-          <CvPreview cv={state.cv} />
+          {state.changes.length > 0 && (
+            <p className="hint">Highlighted lines changed for this job. The PDF has no highlights.</p>
+          )}
+          <CvPreview cv={state.cv} changedIds={new Set(state.changes.map((c) => c.id))} />
         </section>
       ) : (
         <section aria-label="Job description">

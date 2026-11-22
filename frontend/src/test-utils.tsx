@@ -37,8 +37,14 @@ export function fakeApi() {
     "/v1/cv/extract-text": () => json({ filename: "cv.txt", text: "Kerem Aydın\nBackend developer" }),
     "/v1/cv/parse": () => json({ cv: MY_CV, warnings: [] }),
     "/v1/jobs/search": () => json({ jobs: [JOB_A, JOB_B] }),
-    "/v1/cv/tailor": (body) =>
-      json({ cv: { ...MY_CV, summary: `Tailored for ${body.job_title}.` }, warnings: [] }),
+    "/v1/cv/tailor": (body) => {
+      const summary = `Tailored for ${body.job_title}.`;
+      return json({
+        cv: { ...MY_CV, summary },
+        warnings: [],
+        changes: [{ kind: "summary", id: "summary", where: "Summary", before: MY_CV.summary, after: summary, detail: "" }],
+      });
+    },
     "/v1/cv/render-pdf": () => new Response(new Blob(["%PDF"]), { status: 200 }),
   };
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {

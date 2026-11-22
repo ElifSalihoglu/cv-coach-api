@@ -1,4 +1,4 @@
-import type { FoundJob, PdfSource, StructuredCV } from "./types";
+import type { CvChange, FoundJob, PdfSource, StructuredCV } from "./types";
 
 export interface PdfDownload { blob: Blob; filename: string }
 
@@ -114,7 +114,7 @@ export async function searchJobs(params: SearchParams): Promise<FoundJob[]> {
   return (await response.json()).jobs as FoundJob[];
 }
 
-export interface TailoredCv { cv: StructuredCV; warnings: string[] }
+export interface TailoredCv { cv: StructuredCV; warnings: string[]; changes: CvChange[] }
 
 /** One model call: the confirmed CV tailored to one job. */
 export async function tailorCv(cv: StructuredCV, job: FoundJob): Promise<TailoredCv> {
@@ -124,5 +124,5 @@ export async function tailorCv(cv: StructuredCV, job: FoundJob): Promise<Tailore
     body: JSON.stringify({ cv, job_title: job.title, job_description: job.job_description }),
   });
   const body = await response.json();
-  return { cv: body.cv, warnings: body.warnings ?? [] };
+  return { cv: body.cv, warnings: body.warnings ?? [], changes: body.changes ?? [] };
 }

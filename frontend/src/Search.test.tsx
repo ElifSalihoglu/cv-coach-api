@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { JOB_A, fakeApi, json, renderApp, setMobile } from "./test-utils";
+import { JOB_A, MY_CV, fakeApi, json, renderApp, setMobile } from "./test-utils";
 
 let api: ReturnType<typeof fakeApi>;
 type User = ReturnType<typeof userEvent.setup>;
@@ -268,4 +268,47 @@ test("analysis failure keeps the reviewed text", async () => {
   await user.click(await screen.findByRole("button", { name: "Analyze my CV" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("CV coach is unavailable.");
   expect(screen.getByLabelText("CV text")).toHaveValue("Kerem Aydın\nBackend developer");
+});
+
+test("after tailoring, the changes are listed and highlighted in the preview", async () => {
+  const user = userEvent.setup();
+  api.once("/v1/cv/tailor", () => json({
+    cv: { ...MY_CV, summary: "Tailored for AI Engineer." },
+    warnings: ["Bullet 1 at Test A.Ş.: rewrite reverted (new numbers 40)"],
+    changes: [
+      { kind: "moved", id: "exp1.b1", where: "Developer — Test A.Ş.", before: "", after: "Built a billing API.", detail: "Moved from 3rd to 1st" },
+      { kind: "summary", id: "summary", where: "Summary", before: MY_CV.summary, after: "Tailored for AI Engineer.", detail: "" },
+    ],
+  }));
+  renderApp("/cv");
+  await uploadAndConfirm(user);
+  await search(user);
+  await user.click(await screen.findByRole("button", { name: "Tailor my CV" }));
+
+  const changes = await screen.findByText(/What changed \(2 changes\)/);
+  const list = changes.closest("details")!;
+  expect(within(list).getByText("Moved from 3rd to 1st")).toBeInTheDocument();
+  expect(within(list).getByText(MY_CV.summary, { exact: false })).toBeInTheDocument(); // before
+  expect(within(list).getByText("Tailored for AI Engineer.", { exact: false })).toBeInTheDocument(); // now
+  expect(screen.getByText(/never changed/)).toBeInTheDocument();
+  expect(screen.getByText(/rewrite reverted/)).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Preview CV" }));
+  expect(screen.getByTestId("cv-summary")).toHaveClass("is-changed");
+  expect(screen.getByText("Built a billing API.", { exact: false, selector: "li" })).toHaveClass("is-changed");
+  expect(screen.getByText(/Highlighted lines changed/)).toBeInTheDocument();
+});
+
+test("when nothing changed, the user is told so and nothing is highlighted", async () => {
+  const user = userEvent.setup();
+  api.once("/v1/cv/tailor", () => json({ cv: MY_CV, warnings: [], changes: [] }));
+  renderApp("/cv");
+  await uploadAndConfirm(user);
+  await search(user);
+  await user.click(await screen.findByRole("button", { name: "Tailor my CV" }));
+
+  expect(await screen.findByText(/Nothing needed to change for this job/)).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Preview CV" }));
+  expect(screen.getByTestId("cv-summary")).not.toHaveClass("is-changed");
+  expect(screen.queryByText(/Highlighted lines changed/)).not.toBeInTheDocument();
 });

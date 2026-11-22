@@ -1,4 +1,4 @@
-import type { CVBullet, CVExperience, FoundJob, StructuredCV } from "../types";
+import type { CVBullet, CVExperience, CvChange, FoundJob, StructuredCV } from "../types";
 
 // Synthetic candidate and jobs. Nothing here is real personal data.
 const base = {
@@ -83,7 +83,13 @@ const mlCv: StructuredCV = {
 };
 
 /** A synthetic posting with the CV that "Tailor my CV" shows for it. */
-export interface DemoJob { job: FoundJob; cv: StructuredCV }
+export interface DemoJob { job: FoundJob; cv: StructuredCV; changes: CvChange[] }
+
+/** What a candidate would have in their confirmed CV before tailoring (demo only). */
+const BASE_SUMMARY =
+  "Software engineer with seven years of experience in Python, APIs and data pipelines.";
+const AUTOMATION_WHERE = "Senior Software Engineer — Boğaz Yazılım";
+const DATA_WHERE = "Data Engineer — Çınar Veri";
 
 const lines = (...parts: string[]) => parts.join("\n");
 
@@ -107,6 +113,14 @@ export const DEMO_JOBS: DemoJob[] = [
       ),
     },
     cv: automationCv,
+    changes: [
+      { kind: "moved", id: "exp1.b5", where: AUTOMATION_WHERE, before: "",
+        after: pool.exp1.bullets.b5, detail: "Moved from 5th to 3rd" },
+      { kind: "moved", id: "exp2.b4", where: DATA_WHERE, before: "",
+        after: pool.exp2.bullets.b4, detail: "Moved from 4th to 2nd" },
+      { kind: "summary", id: "summary", where: "Summary", before: BASE_SUMMARY,
+        after: automationCv.summary, detail: "" },
+    ],
   },
   {
     job: {
@@ -127,5 +141,13 @@ export const DEMO_JOBS: DemoJob[] = [
       ),
     },
     cv: mlCv,
+    changes: [
+      { kind: "moved", id: "exp1.b3", where: AUTOMATION_WHERE, before: "",
+        after: pool.exp1.bullets.b3, detail: "Moved from 3rd to 1st" },
+      { kind: "moved", id: "exp2.b2", where: DATA_WHERE, before: "",
+        after: pool.exp2.bullets.b2, detail: "Moved from 2nd to 1st" },
+      { kind: "summary", id: "summary", where: "Summary", before: BASE_SUMMARY,
+        after: mlCv.summary, detail: "" },
+    ],
   },
 ];

@@ -48,8 +48,10 @@ test("demo: tailoring is instant, needs no upload and makes no request; each job
   renderApp("/demo");
 
   await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
+  expect(screen.getByText(/What changed \(3 changes\)/)).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Preview CV" }));
   expect(screen.getByTestId("cv-summary")).toHaveTextContent(demoA.cv.summary);
+  expect(screen.getByTestId("cv-summary")).toHaveClass("is-changed");
   expect(api.fetchMock).not.toHaveBeenCalled();
 
   await user.click(screen.getByRole("button", { name: "Download PDF" }));

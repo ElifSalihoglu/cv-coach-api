@@ -20,7 +20,7 @@ export function Demo() {
 
   function request(job: FoundJob) {
     const demo = DEMO_JOBS.find((d) => d.job.id === job.id);
-    if (demo) setTailored((t) => ({ ...t, [job.id]: { status: "ready", cv: demo.cv, warnings: [] } }));
+    if (demo) setTailored((t) => ({ ...t, [job.id]: { status: "ready", cv: demo.cv, warnings: [], changes: demo.changes } }));
   }
 
   return (

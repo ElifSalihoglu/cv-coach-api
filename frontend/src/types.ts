@@ -37,8 +37,18 @@ export interface FoundJob {
 /** What the PDF endpoint needs: the CV to print and the job it was made for. */
 export interface PdfSource { cv: StructuredCV; company: string; title: string }
 
+/** One difference between the confirmed CV and a tailored CV. `id` is "summary" or a bullet id. */
+export interface CvChange {
+  kind: "moved" | "summary" | "rewritten";
+  id: string;
+  where: string;
+  before: string;
+  after: string;
+  detail: string;
+}
+
 /** Progress of "Tailor my CV" for one job. */
 export type TailorState =
   | { status: "working" }
-  | { status: "ready"; cv: StructuredCV; warnings: string[] }
+  | { status: "ready"; cv: StructuredCV; warnings: string[]; changes: CvChange[] }
   | { status: "error"; message: string };

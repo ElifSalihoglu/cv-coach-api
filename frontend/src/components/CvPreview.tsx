@@ -3,7 +3,10 @@ import type { StructuredCV } from "../types";
 const dates = (a: string, b: string) => [a, b].filter(Boolean).join(" – ");
 const join = (parts: string[], sep: string) => parts.filter(Boolean).join(sep);
 
-export function CvPreview({ cv }: { cv: StructuredCV }) {
+/** `changedIds`: "summary" and bullet ids to highlight as changed for this job. */
+export function CvPreview({ cv, changedIds }: { cv: StructuredCV; changedIds?: ReadonlySet<string> }) {
+  const changed = (id: string) => changedIds?.has(id) ?? false;
+  const mark = (id: string) => (changed(id) ? <span className="sr-only"> (changed)</span> : null);
   const contact = join([cv.email, cv.phone, cv.location, ...cv.links], " | ");
   return (
     <article className="cv-sheet" aria-label="CV preview">
@@ -13,7 +16,7 @@ export function CvPreview({ cv }: { cv: StructuredCV }) {
       {cv.summary && (
         <section>
           <h3>Summary</h3>
-          <p data-testid="cv-summary">{cv.summary}</p>
+          <p data-testid="cv-summary" className={changed("summary") ? "is-changed" : undefined}>{cv.summary}{mark("summary")}</p>
         </section>
       )}
 
@@ -24,7 +27,11 @@ export function CvPreview({ cv }: { cv: StructuredCV }) {
             <div className="cv-item" key={exp.id}>
               <p className="cv-item-title">{join([exp.title, exp.employer], " — ")}</p>
               <p className="cv-meta">{join([dates(exp.start, exp.end), exp.location], " | ")}</p>
-              <ul>{exp.bullets.map((b) => <li key={b.id}>{b.text}</li>)}</ul>
+              <ul>
+                {exp.bullets.map((b) => (
+                  <li key={b.id} className={changed(b.id) ? "is-changed" : undefined}>{b.text}{mark(b.id)}</li>
+                ))}
+              </ul>
             </div>
           ))}
         </section>
