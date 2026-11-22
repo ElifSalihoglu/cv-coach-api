@@ -1,0 +1,172 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7fa;
+  --surface: #ffffff;
+  --text: #1b1f2a;
+  --muted: #5b6272;
+  --border: #dcdfe7;
+  --accent: #2f4cdd;
+  --accent-dark: #2339b0;
+  --accent-soft: #eef1fe;
+  --danger-bg: #fdeeee;
+  --danger: #a32121;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+h1, h2, h3, h4 { line-height: 1.25; }
+a { color: var(--accent); }
+
+.app { max-width: 1180px; margin: 0 auto; padding: 16px; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.brand { font-weight: 800; font-size: 1.15rem; color: var(--text); text-decoration: none; }
+.header-link { font-size: .95rem; }
+
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.lead { font-size: 1.05rem; color: var(--muted); margin: 4px 0 16px; }
+
+/* ---- buttons ---- */
+button, .button {
+  font: inherit; padding: 9px 14px; border-radius: 8px; cursor: pointer; text-decoration: none;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); display: inline-block;
+}
+button:hover, .button:hover { border-color: var(--accent); }
+button.primary, .button.primary {
+  font-weight: 700; border-color: var(--accent); background: var(--accent); color: #fff;
+}
+button.primary:hover, .button.primary:hover { background: var(--accent-dark); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+.link-button { border: 0; background: none; padding: 0; color: var(--accent); }
+.link-button:hover { text-decoration: underline; border: 0; }
+.link-secondary { color: var(--accent); }
+
+/* ---- forms ---- */
+.field { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; font-weight: 600; }
+.field input, .field textarea {
+  font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0 20px; }
+
+/* ---- feedback ---- */
+.badge {
+  font-size: .75rem; font-weight: 700; padding: 2px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+}
+.notice, .warning {
+  padding: 12px 14px; border-radius: 8px; margin: 12px 0;
+  background: var(--accent-soft); border: 1px solid var(--border);
+}
+.warning ul { margin: 6px 0 0; padding-left: 20px; }
+.error {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; margin: 12px 0; border-radius: 8px;
+  background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger);
+}
+.error.stacked { flex-direction: column; align-items: flex-start; gap: 4px; }
+.status { color: var(--muted); margin: 8px 0; }
+.status-ready, .ready-mark { color: #1a7f37; font-weight: 700; margin: 0 0 8px; }
+.hint { color: var(--muted); font-size: .9rem; margin: 8px 0 0; }
+
+/* ---- search page ---- */
+.search-section {
+  display: grid; grid-template-columns: 1fr 260px; gap: 20px; align-items: start;
+  padding: 24px; margin-bottom: 24px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px;
+}
+.search-main h1 { margin: 0; font-size: 1.8rem; }
+.search-form { display: grid; grid-template-columns: 1.6fr 1.2fr auto; gap: 12px; align-items: end; }
+.search-form button.primary { height: 44px; padding-inline: 22px; }
+.cv-card { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.cv-card h2 { margin: 0 0 6px; font-size: 1rem; }
+.cv-card p { margin: 0 0 10px; }
+.cv-card-file { font-weight: 600; overflow-wrap: anywhere; color: #1a7f37; }
+
+.results-section h2 {
+  font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0 0 8px;
+}
+
+/* ---- results: list + details ---- */
+.browser { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; margin-top: 8px; }
+.job-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.job-card {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 14px 16px;
+}
+.job-card.is-selected {
+  border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent);
+}
+.job-title { font-weight: 700; }
+.job-company { font-size: .95rem; }
+.job-location { font-size: .85rem; color: var(--muted); }
+.job-flag { font-size: .75rem; font-weight: 700; color: #1a7f37; margin-top: 4px; }
+
+.detail-pane { margin-top: 8px; }
+.detail {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px;
+}
+.detail-head h3 { margin: 0; font-size: 1.35rem; }
+.detail-head p { margin: 2px 0 6px; }
+.cv-action { margin: 16px 0; padding: 14px 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.detail h4 { margin: 0 0 8px; font-size: 1rem; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.back { margin-bottom: 10px; }
+.notes { margin: 12px 0 0; }
+.notes summary { cursor: pointer; color: var(--muted); }
+
+/* ---- CV pages ---- */
+.step { max-width: 1000px; margin: 0 auto; }
+.step h1, .page-title h1 { margin: 0 0 6px; font-size: 1.5rem; }
+.page-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.steps { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 16px; font-size: .85rem; color: var(--muted); }
+.steps li { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+.steps .is-current { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.steps .is-done { color: var(--text); }
+.step > .muted, .step > .actions, .step > .warning, .step > .field, .step > .error { max-width: 760px; }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 20px; max-width: 640px;
+  border: 2px dashed var(--accent); border-radius: 14px; background: var(--accent-soft);
+  cursor: pointer; position: relative; text-align: center;
+}
+.dropzone:focus-within, .dropzone.is-dragging { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dropzone.is-busy { opacity: .7; cursor: progress; }
+.dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.dropzone-title { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+.dropzone-hint { color: var(--muted); font-size: .9rem; }
+.supported { color: var(--muted); font-size: .85rem; margin: 8px 0 12px; }
+
+/* The CV stays a light "paper", like the PDF. */
+.cv-sheet {
+  background: #fff; color: #1c1c1c; border: 1px solid var(--border); border-radius: 6px; margin-top: 10px;
+  padding: 32px 36px; box-shadow: 0 1px 6px rgba(0,0,0,.08); line-height: 1.45; font-size: .93rem;
+}
+.cv-name { margin: 0; font-size: 1.7rem; }
+.cv-contact { margin: 4px 0 0; font-size: .85rem; color: #555; overflow-wrap: anywhere; }
+.cv-sheet h3 {
+  margin: 18px 0 8px; padding-bottom: 3px; font-size: .85rem; letter-spacing: .06em;
+  text-transform: uppercase; border-bottom: 1px solid #999;
+}
+.cv-sheet p { margin: 0 0 6px; }
+.cv-item { margin-bottom: 10px; }
+.cv-item-title { font-weight: 700; }
+.cv-meta { font-size: .82rem; color: #555; }
+.cv-sheet ul { margin: 4px 0 0; padding-left: 20px; }
+
+@media (max-width: 800px) {
+  .app { padding: 12px; }
+  .search-section { grid-template-columns: 1fr; padding: 16px; }
+  .search-form { grid-template-columns: 1fr; }
+  .search-form button.primary { width: 100%; }
+  .browser { grid-template-columns: 1fr; }
+  .detail { padding: 16px; }
+  .button-row button { flex: 1; }
+  .cv-sheet { padding: 20px 16px; }
+}
