@@ -108,3 +108,36 @@ def test_a_summary_is_never_moved_to_another_requirement():
     # recorded r1/ai: the target used to be swapped for "evaluate LLM outputs ..." behind the user's back
     (card,) = build(summary(AI_TWO_LINES, Q_AI, ["exp1.b1"]), focus="AI").suggestions
     assert card.requirement == Q_AI
+
+
+# ---- the claim is judged by what was designed, not by a banned word ----
+
+def _cv_with(text: str):
+    cv = CV.model_copy(deep=True)
+    cv.experiences[1].bullets[3] = CVBullet(id="exp2.b4", text=text)
+    return cv
+
+
+def test_designed_api_integrations_needs_a_line_that_says_so():
+    claim = "Software engineer who designed API integrations for internal tools, with seven years in Python."
+    # the CV only says it INTEGRATED third-party APIs: the design claim never reaches the user
+    assert build(summary(claim, Q_PY, ["exp2.b4"]), focus="Python Backend").suggestions == []
+    # a line that really says integrations were designed backs the same sentence
+    cv = _cv_with("Designed API integrations between the billing platform and partner systems.")
+    (card,) = build(summary(claim, Q_PY, ["exp2.b4"]), cv=cv, focus="Python Backend").suggestions
+    assert card.after == claim
+
+
+def test_designing_a_different_thing_is_not_support_even_when_words_overlap():
+    # "internal tools" is shared, but the CV line designed tools, not REST APIs
+    cv = _cv_with("Designed internal tools for the operations team.")
+    assert unsupported_design_claims("Designed internal REST APIs for the operations team.", cv) == [
+        "Designed internal REST APIs for the operations team"]
+    assert unsupported_design_claims("Designed internal tools for the operations team.", cv) == []
+
+
+def test_the_banned_word_is_not_the_rule():
+    # "designing" is fine wherever a line says what was designed; "building" a REST API is not judged here
+    cv = _cv_with("Designed and maintained REST APIs for the operations team.")
+    assert unsupported_design_claims("Experienced in designing REST APIs.", cv) == []
+    assert unsupported_design_claims("Built REST APIs for webhooks.", CV) == []

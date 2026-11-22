@@ -209,12 +209,24 @@ _DESIGN = re.compile(r"\b(design(?:ed|s|ing)?|architect(?:ed|s|ing)?)\b", re.IGN
 _FILLER = {"and", "the", "for", "with", "into", "from", "that", "this", "their", "our", "your", "using", "used", "of", "to", "in", "on", "a", "an"}
 
 
+# Words that fit almost anything: sharing "internal tools" must not make "designing internal
+# REST APIs" look supported by "Designed internal tools for operations".
+_GENERIC_OBJECT = {
+    "tool", "tools", "system", "systems", "service", "services", "solution", "solutions",
+    "platform", "platforms", "application", "applications", "feature", "features",
+    "process", "processes", "internal", "new", "various", "several", "scalable", "robust",
+}
+
+
 def _design_objects(text: str) -> list[set[str]]:
     """For each 'design ...' / 'architect ...' phrase, the words of what was designed."""
     found = []
     for m in _DESIGN.finditer(text):
         clause = re.split(r"[.;:\n]", text[m.end():], maxsplit=1)[0]
-        words = [w for w in _WORDS.findall(_fold(clause)) if w not in _FILLER and len(w) > 2][:5]
+        # What was designed ends where who or what it was for begins ("... for the operations team").
+        clause = re.split(r"\b(?:for|to|with|between|across|at|in|on|by|within|using|so)\b", clause, maxsplit=1)[0]
+        words = [w for w in _WORDS.findall(_fold(clause))
+                 if w not in _FILLER and w not in _GENERIC_OBJECT and len(w) > 2][:5]
         found.append({_stem(w) for w in words})
     return found
 
@@ -231,7 +243,7 @@ def unsupported_design_claims(text: str, cv: StructuredCV) -> list[str]:
     flagged = []
     for m, objects in zip(_DESIGN.finditer(text), _design_objects(text)):
         if objects and not objects & have:
-            flagged.append(text[m.start(): m.end() + 40].split(".")[0].strip())
+            flagged.append(text[m.start(): m.end() + 80].split(".")[0].strip())
     return flagged
 
 
