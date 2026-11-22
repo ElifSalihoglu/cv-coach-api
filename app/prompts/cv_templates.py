@@ -88,6 +88,15 @@ Faithfulness rules (most important):
   job's wording where the bullet already says the same thing.
 - Keep the language of the CV.
 
+Postings with several tracks:
+- A posting may list several tracks or roles (for example TypeScript, Python,
+  DevOps and AI) and ask for one of them. Write for the track the candidate's
+  experience supports best; job_title may name it. Put the bullets that back
+  that track first.
+- Skills a posting lists only as optional ("nice to have", "bonus", "plus") or
+  only for another track say nothing about this candidate. Never add them to
+  the summary or the bullets.
+
 Structure rules:
 - Return every experience id you received, with every bullet exactly once.
   Use source_id to name the bullet each text comes from. Never move a bullet

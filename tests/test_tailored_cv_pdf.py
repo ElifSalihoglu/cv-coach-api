@@ -318,9 +318,9 @@ def test_parse_warns_when_value_is_not_in_the_text_or_missing():
 
 
 @pytest.mark.parametrize("rewrite,expected", [
-    ("Kubernetes ile günlük veri hatları geliştirdim.", "skills not in the CV"),
-    ("Python ve Airflow ile günlük veri hatlarını %50 hızlandırdım.", "new numbers"),
-    ("Python ve Airflow ile günlük veri hatlarına liderlik ettim.", "new seniority"),
+    ("Kubernetes ile günlük veri hatları geliştirdim.", "mentioned Kubernetes"),
+    ("Python ve Airflow ile günlük veri hatlarını %50 hızlandırdım.", "the number 50"),
+    ("Python ve Airflow ile günlük veri hatlarına liderlik ettim.", "claimed liderlik"),
 ])
 def test_unsupported_rewrite_is_reverted_with_warning(rewrite, expected):
     cv = assign_ids(PARSED)
@@ -363,7 +363,7 @@ def test_summary_with_new_claims_is_reverted_to_the_original():
     result = build_tailored_cv(cv, content, "Kubernetes experience required.")
 
     assert result.cv.summary == cv.summary
-    assert any(w.startswith("summary reverted") for w in result.warnings)
+    assert any(w.startswith("Original summary kept") for w in result.warnings)
 
 
 def test_model_input_has_no_identity_contact_or_dates():

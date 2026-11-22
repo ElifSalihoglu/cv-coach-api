@@ -11,7 +11,8 @@ back to the original text for the affected bullet (or summary) and record a
 warning, so a bad answer degrades to "less tailored" and never to "invented".
 """
 import re
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from app.models.cv_document import (
     CVBullet,
@@ -56,6 +57,10 @@ def skill_like_terms(job_description: str) -> set[str]:
     terms: set[str] = set()
     for match in _WORD.finditer(job_description or ""):
         word = match.group()
+        if not any(ch.isalpha() for ch in word):
+            # "3", "3+", "24/7", "2.5": numbers, not skills. Numeric claims are
+            # checked separately (new numbers); names like S3 or EC2 have letters.
+            continue
         before = job_description[: match.start()].rstrip(" \t")
         sentence_start = not before or before[-1] in _SENTENCE_END
         if (
@@ -69,30 +74,55 @@ def skill_like_terms(job_description: str) -> set[str]:
     return terms
 
 
-def faithfulness_problems(
-    text: str, source: str, job_terms: set[str]
-) -> list[str]:
+@dataclass(frozen=True)
+class Problem:
+    """Something a draft claims that the CV does not back up."""
+
+    kind: Literal["numbers", "seniority", "skills"]
+    terms: tuple[str, ...]  # as written in the draft
+
+
+def faithfulness_problems(text: str, source: str, job_terms: set[str]) -> list[Problem]:
     """
     What `text` claims that `source` does not back up: new numbers, new
     seniority words, and job-description skills the source never mentions.
     """
-    problems: list[str] = []
+    problems: list[Problem] = []
 
     new_numbers = set(_NUMBER.findall(text)) - set(_NUMBER.findall(source))
     if new_numbers:
-        problems.append("new numbers " + ", ".join(sorted(new_numbers)))
+        problems.append(Problem("numbers", tuple(sorted(new_numbers))))
 
     source_seniority = {norm(m.group()) for m in _SENIORITY.finditer(source)}
-    new_seniority = {
-        norm(m.group()) for m in _SENIORITY.finditer(text)
-    } - source_seniority
-    if new_seniority:
-        problems.append("new seniority " + ", ".join(sorted(new_seniority)))
+    seniority = {
+        norm(m.group()): m.group() for m in _SENIORITY.finditer(text)
+        if norm(m.group()) not in source_seniority
+    }
+    if seniority:
+        problems.append(Problem("seniority", tuple(sorted(seniority.values(), key=str.casefold))))
 
+    spelled = {_stem(m.group()): m.group() for m in _WORD.finditer(text or "")}
     new_skills = (_tokens(text) & job_terms) - _tokens(source)
     if new_skills:
-        problems.append("skills not in the CV: " + ", ".join(sorted(new_skills)))
+        problems.append(Problem(
+            "skills", tuple(sorted((spelled.get(t, t) for t in new_skills), key=str.casefold)),
+        ))
     return problems
+
+
+def explain_problems(problems: list[Problem]) -> str:
+    """One plain sentence naming the flagged terms, e.g. for the user to read."""
+    parts = []
+    for problem in problems:
+        terms = ", ".join(problem.terms)
+        if problem.kind == "skills":
+            parts.append(f"mentioned {terms}, which we couldn't verify in your CV")
+        elif problem.kind == "numbers":
+            noun = "number" if len(problem.terms) == 1 else "numbers"
+            parts.append(f"used the {noun} {terms}, which {'is' if len(problem.terms) == 1 else 'are'} not in your CV")
+        else:
+            parts.append(f"claimed {terms}, which your CV does not say")
+    return "The draft " + " and ".join(parts) + "."
 
 
 def cv_source_text(cv: StructuredCV) -> str:
@@ -152,9 +182,7 @@ def build_tailored_cv(
     summary = content.summary
     problems = faithfulness_problems(summary, cv_source_text(original), job_terms)
     if problems:
-        warnings.append(
-            "summary reverted to the original (" + "; ".join(problems) + ")"
-        )
+        warnings.append("Original summary kept. " + explain_problems(problems))
         summary = original.summary
 
     cv = original.model_copy(update={"summary": summary, "experiences": experiences})
@@ -189,7 +217,7 @@ def _tailor_bullets(exp, by_id, answer, job_terms, warnings) -> list[CVBullet]:
             )
             if problems:
                 warnings.append(
-                    f"{source.id}: rewrite reverted ({'; '.join(problems)})"
+                    f"{source.id}: original wording kept. " + explain_problems(problems)
                 )
                 text = source.text
         result.append(CVBullet(id=source.id, text=text))
