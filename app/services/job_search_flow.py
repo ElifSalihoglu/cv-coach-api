@@ -5,7 +5,7 @@ from typing import Callable
 
 from app.logging_utils import log_event
 from app.models.cv_document import StructuredCV
-from app.models.schemas import JobOptimizationResult, SearchResultJob
+from app.models.schemas import JobOptimizationResult, MatchedJob, SearchResultJob
 from app.services.cv_coach import CVCoach
 from app.services.job_matching import job_key, match_jobs
 from app.services.job_optimization import optimize_for_jobs
@@ -22,28 +22,25 @@ def _ms(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
 
 
-async def search_and_optimize(
+async def search_jobs(
     *,
     search: SearchFn,
-    coach: CVCoach,
     query: str,
     city: str,
     country: str,
-    cv_bullets: list[str],
-    cv: StructuredCV | None = None,
     limit: int = 5,
     source: str = "indeed",
-) -> list[JobOptimizationResult]:
+) -> list[MatchedJob]:
     """
-    One search (with descriptions) -> per-job optimization.
+    One search (with descriptions), joined into MatchedJobs. No model is called.
 
     `search` is blocking (Selenium), so it runs in a worker thread. A job whose
     description could not be read comes back as "missing_description"; other
-    jobs are still processed. A failing search itself raises, since there is
+    jobs are still returned. A failing search itself raises, since there is
     nothing to show.
 
-    Logs (never the query, URLs, CV or job text): the search stage, one line
-    per job's detail outcome, and a one-line summary.
+    Logs (never the query, URLs or job text): the search stage and one line
+    per job's detail outcome.
     """
     started = time.perf_counter()
     try:
@@ -101,7 +98,26 @@ async def search_and_optimize(
                 reason=raw.get("detail_error") or "description_empty",
                 duration_ms=duration,
             )
+    return matched
 
+
+async def search_and_optimize(
+    *,
+    search: SearchFn,
+    coach: CVCoach,
+    query: str,
+    city: str,
+    country: str,
+    cv_bullets: list[str],
+    cv: StructuredCV | None = None,
+    limit: int = 5,
+    source: str = "indeed",
+) -> list[JobOptimizationResult]:
+    """One search (with descriptions) -> per-job optimization."""
+    matched = await search_jobs(
+        search=search, query=query, city=city, country=country,
+        limit=limit, source=source,
+    )
     optimized = await optimize_for_jobs(coach, matched, cv_bullets, cv)
 
     counts = {"optimized": 0, "missing_description": 0, "failed": 0}

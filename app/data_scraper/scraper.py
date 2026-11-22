@@ -22,6 +22,12 @@ from app.services.search_errors import (
 INDEED_BASE = "https://de.indeed.com"
 
 
+def location_query(city: str, country: str) -> str:
+    """'Berlin, Germany' when a country is given, else just the city (or 'remote')."""
+    city, country = (city or "").strip(), (country or "").strip()
+    return f"{city}, {country}" if city and country else city or country
+
+
 def _card_text(card, selector: str) -> str:
     try:
         return card.find_element(By.CSS_SELECTOR, selector).get_attribute("textContent").strip()
@@ -98,7 +104,7 @@ def scrape_indeed_jobs_with_details(
     driver = webdriver.Chrome()
     try:
         driver.get(
-            f"{INDEED_BASE}/jobs?q={quote_plus(title)}&l={quote_plus(f'{city}, {country}')}"
+            f"{INDEED_BASE}/jobs?q={quote_plus(title)}&l={quote_plus(location_query(city, country))}"
         )
         if _verification_shown(driver):
             raise HumanVerificationRequired()
