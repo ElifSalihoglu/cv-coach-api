@@ -3,6 +3,7 @@ import time
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routes_cv import router as cv_router
 from app.api.v1.routes_jobs import router as jobs_router
@@ -14,6 +15,13 @@ logger = logging.getLogger("app.request")
 app = FastAPI(title="CV Coach API")
 app.include_router(cv_router)
 app.include_router(jobs_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+    expose_headers=["Content-Disposition"],
+)
 
 
 @app.middleware("http")
