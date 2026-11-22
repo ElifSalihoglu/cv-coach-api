@@ -4,10 +4,17 @@ import {
 import { ApiError, errorMessage, searchJobs, tailorCv, type ParsedCv } from "./api";
 import type { FoundJob, StructuredCV, TailorState } from "./types";
 
+/** The analysed CV while the user reviews it: the user's edits live here, not in the API result. */
+export interface ParsedDraft extends ParsedCv {
+  edited: boolean;
+  /** Sections the user already saved; their parse warnings are no longer shown. */
+  reviewed: string[];
+}
+
 export interface CvSession {
   fileName: string | null;
   text: string | null; // extracted text, editable until analyzed
-  parsed: ParsedCv | null; // analysis result awaiting confirmation
+  parsed: ParsedDraft | null; // analysis result awaiting confirmation
   confirmedCv: StructuredCV | null;
 }
 
@@ -56,6 +63,8 @@ interface Ctx {
   startCv: (fileName: string, text: string) => void;
   setCvText: (text: string) => void;
   setParsed: (parsed: ParsedCv | null) => void;
+  /** Keep the user's edit of one section of the analysed CV. */
+  saveParsedEdit: (cv: StructuredCV, section: string) => void;
   confirmCv: (cv: StructuredCV) => void;
   resetCv: () => void;
   setPendingTailor: (jobId: string | null) => void;
@@ -137,7 +146,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }));
       },
       setCvText: (text) => setCv({ text }),
-      setParsed: (parsed) => setCv({ parsed }),
+      setParsed: (parsed) =>
+        setCv({ parsed: parsed ? { ...parsed, edited: false, reviewed: [] } : null }),
+      saveParsedEdit: (cv, section) =>
+        setSession((s) =>
+          s.cv.parsed
+            ? {
+                ...s,
+                cv: {
+                  ...s.cv,
+                  parsed: {
+                    ...s.cv.parsed, cv, edited: true,
+                    reviewed: [...new Set([...s.cv.parsed.reviewed, section])],
+                  },
+                },
+              }
+            : s,
+        ),
       confirmCv: (cv) => setCv({ confirmedCv: cv }),
       resetCv: () => {
         cvVersion.current += 1;

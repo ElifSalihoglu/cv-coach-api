@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { errorMessage, parseCv } from "../api";
 import { CvPreview } from "../components/CvPreview";
+import { CvReview } from "../components/CvReview";
 import { UploadCv } from "../components/UploadCv";
 import { useSession } from "../session";
+import type { SectionKey } from "../warnings";
 
 type Stage = 1 | 2 | 3;
 
@@ -107,9 +109,10 @@ function TextStep() {
 }
 
 function ConfirmStep() {
-  const { session, setParsed, confirmCv } = useSession();
+  const { session, setParsed, saveParsedEdit, confirmCv } = useSession();
   const navigate = useNavigate();
   const jobsPath = useJobsPath();
+  const [editing, setEditing] = useState<SectionKey | null>(null);
   const parsed = session.cv.parsed!;
   return (
     <section className="step">
@@ -117,25 +120,30 @@ function ConfirmStep() {
       <h1>Confirm your CV</h1>
       <p className="muted">
         This is how your CV was understood. Every tailored CV is built from it.
-        If something is wrong, go back, fix the text and analyze again.
+        Fix anything that is wrong with Edit, then confirm.
       </p>
-      {parsed.warnings.length > 0 && (
-        <div className="warning" role="status">
-          <strong>Worth double-checking:</strong>
-          <ul>{parsed.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
-        </div>
-      )}
       <div className="actions">
         <button
           type="button"
           className="primary"
+          disabled={editing !== null}
           onClick={() => { confirmCv(parsed.cv); navigate(jobsPath); }}
         >
           Confirm CV
         </button>
-        <button type="button" onClick={() => setParsed(null)}>Back to text</button>
+        <button type="button" disabled={editing !== null} onClick={() => setParsed(null)}>
+          {parsed.edited ? "Discard edits and go back" : "Back to text"}
+        </button>
+        {editing !== null && <span className="muted">Save or cancel the section you are editing first.</span>}
       </div>
-      <CvPreview cv={parsed.cv} />
+      <CvReview
+        cv={parsed.cv}
+        warnings={parsed.warnings}
+        reviewed={parsed.reviewed}
+        editing={editing}
+        setEditing={setEditing}
+        onSave={saveParsedEdit}
+      />
     </section>
   );
 }
