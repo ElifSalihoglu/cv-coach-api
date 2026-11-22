@@ -1,97 +1,82 @@
-import type { CVBullet, CVExperience, CvChange, FoundJob, StructuredCV } from "../types";
+import type { CoachResult, FoundJob, StructuredCV, Suggestion } from "../types";
 
-// Synthetic candidate and jobs. Nothing here is real personal data.
-const base = {
+// Synthetic candidate, postings and suggestions. Nothing here is real personal data.
+const bullets = (exp: string, texts: string[]) => texts.map((text, i) => ({ id: `${exp}.b${i + 1}`, text }));
+
+/** The candidate's confirmed main CV. Suggestions are proposals on top of it. */
+export const DEMO_MAIN_CV: StructuredCV = {
   name: "Elçin Yıldız",
   email: "elcin.yildiz@example.com",
   phone: "+90 555 000 00 00",
   location: "İstanbul, Türkiye",
   links: ["github.com/example-elcin", "linkedin.com/in/example-elcin"],
-  education: [
+  summary: "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+  experiences: [
     {
-      id: "edu1",
-      school: "Örnek Teknik Üniversitesi",
-      degree: "B.Sc. Computer Engineering",
-      start: "2014",
-      end: "2018",
-      details: "Graduation project: anomaly detection on sensor streams.",
+      id: "exp1", employer: "Boğaz Yazılım", title: "Senior Software Engineer",
+      start: "2022", end: "Present", location: "İstanbul",
+      bullets: bullets("exp1", [
+        "Built an LLM-based invoice triage agent that routes 12,000 documents per month and cut manual review by 60%.",
+        "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+        "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+        "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+        "Mentored four engineers and led the weekly architecture review.",
+      ]),
+    },
+    {
+      id: "exp2", employer: "Çınar Veri", title: "Data Engineer",
+      start: "2018", end: "2022", location: "Ankara",
+      bullets: bullets("exp2", [
+        "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
+        "Built a feature store serving 40 features to three production models.",
+        "Introduced data-quality checks that caught schema drift before it reached reports.",
+        "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+      ]),
     },
   ],
-  certifications: [
-    { id: "cert1", name: "Cloud Practitioner", issuer: "Example Cloud Academy", date: "2022" },
+  education: [
+    {
+      id: "edu1", school: "Örnek Teknik Üniversitesi", degree: "B.Sc. Computer Engineering",
+      start: "2014", end: "2018", details: "Graduation project: anomaly detection on sensor streams.",
+    },
   ],
+  skills: ["Python", "FastAPI", "Airflow", "SQL", "Docker", "REST APIs"],
+  projects: [],
+  certifications: [{ id: "cert1", name: "Cloud Practitioner", issuer: "Example Cloud Academy", date: "2022" }],
   languages: ["Turkish (native)", "English (C1)", "German (A2)"],
 };
 
-// One pool of source experiences; each job picks and orders its own bullets.
-const pool: Record<string, { meta: Omit<CVExperience, "bullets">; bullets: Record<string, string> }> = {
-  exp1: {
-    meta: { id: "exp1", employer: "Boğaz Yazılım", title: "Senior Software Engineer",
-      start: "2022", end: "Present", location: "İstanbul" },
-    bullets: {
-      b1: "Built an LLM-based invoice triage agent that routes 12,000 documents per month and cut manual review by 60%.",
-      b2: "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
-      b3: "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
-      b4: "Set up evaluation dashboards and offline test sets to track model quality across releases.",
-      b5: "Mentored four engineers and led the weekly architecture review.",
-    },
-  },
-  exp2: {
-    meta: { id: "exp2", employer: "Çınar Veri", title: "Data Engineer",
-      start: "2018", end: "2022", location: "Ankara" },
-    bullets: {
-      b1: "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
-      b2: "Built a feature store serving 40 features to three production models.",
-      b3: "Introduced data-quality checks that caught schema drift before it reached reports.",
-      b4: "Integrated third-party APIs and webhooks into internal tools for the operations team.",
-    },
-  },
-};
-
-function experiences(pick: Record<string, string[]>): CVExperience[] {
-  return Object.entries(pick).map(([expId, bulletIds]) => {
-    const src = pool[expId];
-    const bullets: CVBullet[] = bulletIds.map((b) => ({ id: `${expId}.${b}`, text: src.bullets[b] }));
-    return { ...src.meta, bullets };
-  });
-}
-
-const automationCv: StructuredCV = {
-  ...base,
-  summary:
-    "Software engineer who turns manual, error-prone workflows into reliable LLM-powered automations. " +
-    "Seven years of Python, APIs and data pipelines, with a focus on agents that people can trust in production.",
-  experiences: experiences({ exp1: ["b1", "b2", "b5"], exp2: ["b1", "b4"] }),
-  skills: ["Python", "LLM agents", "FastAPI", "Workflow automation", "Airflow", "REST APIs", "Docker"],
-  projects: [
-    { id: "proj1", name: "Mail-to-ticket agent",
-      description: "Classifies inbound email and opens structured tickets automatically." },
-  ],
-};
-
-const mlCv: StructuredCV = {
-  ...base,
-  summary:
-    "Machine learning engineer who takes models from experiment to production. " +
-    "Seven years across feature engineering, training, evaluation and serving, with a bias for measurable impact.",
-  experiences: experiences({ exp1: ["b3", "b4", "b5"], exp2: ["b2", "b3"] }),
-  skills: ["Python", "scikit-learn", "PyTorch", "Feature stores", "Model evaluation", "MLOps", "SQL"],
-  projects: [
-    { id: "proj1", name: "Sensor anomaly detector",
-      description: "Streaming anomaly detection with a retraining schedule and drift alerts." },
-  ],
-};
-
-/** A synthetic posting with the CV that "Tailor my CV" shows for it. */
-export interface DemoJob { job: FoundJob; cv: StructuredCV; changes: CvChange[] }
-
-/** What a candidate would have in their confirmed CV before tailoring (demo only). */
-const BASE_SUMMARY =
-  "Software engineer with seven years of experience in Python, APIs and data pipelines.";
 const AUTOMATION_WHERE = "Senior Software Engineer — Boğaz Yazılım";
 const DATA_WHERE = "Data Engineer — Çınar Veri";
+const lineOf = (id: string) => {
+  const [exp] = id.split(".b");
+  return DEMO_MAIN_CV.experiences.find((e) => e.id === exp)!.bullets.find((b) => b.id === id)!.text;
+};
+const position = (id: string) => {
+  const [exp] = id.split(".b");
+  return DEMO_MAIN_CV.experiences.find((e) => e.id === exp)!.bullets.findIndex((b) => b.id === id) + 1;
+};
+
+function promote(id: string, where: string, requirement: string, rationale: string, priority: number): Suggestion {
+  return {
+    id: `promote:${id}`, kind: "promote", requirement, level: "required",
+    sources: [{ id, where, text: lineOf(id) }], support: "direct",
+    before: lineOf(id), after: lineOf(id), position: position(id), rationale, priority,
+  };
+}
+
+function summary(after: string, sourceId: string, where: string, requirement: string, rationale: string, priority: number): Suggestion {
+  return {
+    id: "summary", kind: "summary", requirement, level: "required",
+    sources: [{ id: sourceId, where, text: lineOf(sourceId) }], support: "direct",
+    before: DEMO_MAIN_CV.summary, after, position: null, rationale, priority,
+  };
+}
 
 const lines = (...parts: string[]) => parts.join("\n");
+
+/** A synthetic posting and what the coach would propose for it (no model involved in the demo). */
+export interface DemoJob { job: FoundJob; result: CoachResult }
 
 export const DEMO_JOBS: DemoJob[] = [
   {
@@ -112,15 +97,34 @@ export const DEMO_JOBS: DemoJob[] = [
         "- Experience shipping automation or LLM features to production",
       ),
     },
-    cv: automationCv,
-    changes: [
-      { kind: "moved", id: "exp1.b5", where: AUTOMATION_WHERE, before: "",
-        after: pool.exp1.bullets.b5, detail: "Moved from 5th to 3rd" },
-      { kind: "moved", id: "exp2.b4", where: DATA_WHERE, before: "",
-        after: pool.exp2.bullets.b4, detail: "Moved from 4th to 2nd" },
-      { kind: "summary", id: "summary", where: "Summary", before: BASE_SUMMARY,
-        after: automationCv.summary, detail: "" },
-    ],
+    result: {
+      kind: "suggestions", focus: "", dropped: 0, tracks: [],
+      responsibilities: [
+        "Build agents that classify and route documents",
+        "Design reliable workflows",
+        "Integrate third-party APIs and webhooks",
+      ],
+      requirements: [
+        { text: "Strong Python and API experience", quote: "Strong Python and API experience", level: "required" },
+        { text: "Shipping automation or LLM features to production", quote: "Experience shipping automation or LLM features to production", level: "required" },
+      ],
+      suggestions: [
+        summary(
+          "Software engineer with seven years in Python and APIs who ships LLM-based automations to production, such as an invoice triage agent that routes 12,000 documents per month.",
+          "exp1.b1", AUTOMATION_WHERE, "Experience shipping automation or LLM features to production",
+          "Puts the production agent and its scale in the first lines.", 1,
+        ),
+        promote(
+          "exp2.b4", DATA_WHERE, "Integrate third-party APIs and webhooks into internal tools",
+          "The posting names this integration work; your line says exactly that.", 2,
+        ),
+      ],
+      questions: [{
+        id: "ask:monitoring", level: "required", term: "monitoring",
+        requirement: "Design workflows with queues, retries and monitoring",
+        text: "The posting requires monitoring. Your CV doesn't mention it. Have you used it?",
+      }],
+    },
   },
   {
     job: {
@@ -140,14 +144,37 @@ export const DEMO_JOBS: DemoJob[] = [
         "- Experience with data pipelines and model evaluation",
       ),
     },
-    cv: mlCv,
-    changes: [
-      { kind: "moved", id: "exp1.b3", where: AUTOMATION_WHERE, before: "",
-        after: pool.exp1.bullets.b3, detail: "Moved from 3rd to 1st" },
-      { kind: "moved", id: "exp2.b2", where: DATA_WHERE, before: "",
-        after: pool.exp2.bullets.b2, detail: "Moved from 2nd to 1st" },
-      { kind: "summary", id: "summary", where: "Summary", before: BASE_SUMMARY,
-        after: mlCv.summary, detail: "" },
-    ],
+    result: {
+      kind: "suggestions", focus: "", dropped: 0, tracks: [],
+      responsibilities: [
+        "Train, evaluate and monitor prediction models",
+        "Maintain feature pipelines and a feature store",
+        "Track model quality across releases",
+      ],
+      requirements: [
+        { text: "Python, scikit-learn or PyTorch", quote: "Python, scikit-learn or PyTorch", level: "required" },
+        { text: "Data pipelines and model evaluation", quote: "Experience with data pipelines and model evaluation", level: "required" },
+      ],
+      suggestions: [
+        promote(
+          "exp1.b4", AUTOMATION_WHERE, "Track model quality across releases with offline test sets",
+          "Your evaluation work matches this line of the posting almost word for word.", 1,
+        ),
+        summary(
+          "Machine learning engineer who takes models from experiment to production, such as a churn-prediction model that lifted retention campaign precision by 18%.",
+          "exp1.b3", AUTOMATION_WHERE, "Train, evaluate and monitor prediction models",
+          "Leads with a trained and deployed model and its measured result.", 2,
+        ),
+        promote(
+          "exp2.b2", DATA_WHERE, "Maintain feature pipelines and a feature store",
+          "You built a feature store: that is the second line of the posting.", 3,
+        ),
+      ],
+      questions: [{
+        id: "ask:scikit-learn", level: "required", term: "scikit-learn",
+        requirement: "Python, scikit-learn or PyTorch",
+        text: "The posting requires scikit-learn. Your CV doesn't mention it. Have you used it?",
+      }],
+    },
   },
 ];

@@ -1,13 +1,9 @@
 import { MOBILE_QUERY, useMediaQuery } from "../hooks";
-import type { FoundJob, TailorState } from "../types";
+import type { FoundJob } from "../types";
 import { JobCard } from "./JobCard";
-import { JobDetail } from "./JobDetail";
+import { JobDetail, type CoachControls } from "./JobDetail";
 
-export interface TailorControls {
-  hasCv: boolean;
-  stateFor: (jobId: string) => TailorState | undefined;
-  request: (job: FoundJob) => void;
-}
+export type { CoachControls };
 
 interface Props {
   jobs: FoundJob[];
@@ -15,11 +11,11 @@ interface Props {
   selectedId: string | null;
   onSelect: (jobId: string) => void;
   onBack: () => void;
-  tailor: TailorControls;
+  coach: CoachControls;
 }
 
 /** Results list and job details: side by side on desktop, one at a time on mobile. */
-export function JobBrowser({ jobs, selectedId, onSelect, onBack, tailor }: Props) {
+export function JobBrowser({ jobs, selectedId, onSelect, onBack, coach }: Props) {
   const mobile = useMediaQuery(MOBILE_QUERY);
   const chosen = jobs.find((j) => j.id === selectedId) ?? null;
   const shown = mobile ? chosen : chosen ?? jobs[0];
@@ -31,7 +27,7 @@ export function JobBrowser({ jobs, selectedId, onSelect, onBack, tailor }: Props
           <JobCard
             job={job}
             selected={job.id === shown?.id}
-            ready={tailor.stateFor(job.id)?.status === "ready"}
+            ready={coach.stateFor(job.id)?.status === "ready"}
             onSelect={onSelect}
           />
         </div>
@@ -46,13 +42,7 @@ export function JobBrowser({ jobs, selectedId, onSelect, onBack, tailor }: Props
           ← Back to results
         </button>
       )}
-      <JobDetail
-        key={shown.id}
-        job={shown}
-        state={tailor.stateFor(shown.id)}
-        hasCv={tailor.hasCv}
-        onTailor={() => tailor.request(shown)}
-      />
+      <JobDetail key={shown.id} job={shown} controls={coach} />
     </div>
   );
 

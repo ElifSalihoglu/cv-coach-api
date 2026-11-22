@@ -8,8 +8,8 @@ import type { FoundJob } from "../types";
 
 /** Home: search first; the CV is only needed when tailoring a CV to a job. */
 export function Search() {
-  const { session, setSearchForm, runSearch, tailorJob, setPendingTailor } = useSession();
-  const { search, tailored, cv, pendingTailorJobId } = session;
+  const { session, coach, setSearchForm, runSearch, setPendingTailor } = useSession();
+  const { search, cv, pendingTailorJobId } = session;
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -22,8 +22,8 @@ export function Search() {
     if (!pendingTailorJobId || !cv.confirmedCv) return;
     const job = search.jobs.find((j) => j.id === pendingTailorJobId);
     setPendingTailor(null);
-    if (job) void tailorJob(job);
-  }, [pendingTailorJobId, cv.confirmedCv, search.jobs, setPendingTailor, tailorJob]);
+    if (job) void coach.start(job);
+  }, [pendingTailorJobId, cv.confirmedCv, search.jobs, setPendingTailor, coach.start]);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -33,7 +33,7 @@ export function Search() {
 
   function request(job: FoundJob) {
     if (cv.confirmedCv) {
-      void tailorJob(job);
+      void coach.start(job);
       return;
     }
     setPendingTailor(job.id); // after upload and confirmation the user returns here
@@ -129,10 +129,14 @@ export function Search() {
               onBack={() =>
                 location.state?.fromList ? navigate(-1) : setParams({}, { replace: true })
               }
-              tailor={{
+              coach={{
                 hasCv: Boolean(cv.confirmedCv),
-                stateFor: (id) => tailored[id],
-                request,
+                mainCv: cv.confirmedCv,
+                stateFor: (id) => coach.coach[id],
+                start: request,
+                choose: (job, name) => void coach.choose(job, name),
+                changeFocus: coach.changeFocus,
+                decide: (job, action) => void coach.decide(job, action),
               }}
             />
           </>

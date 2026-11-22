@@ -1,7 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { DEMO_JOBS } from "./data/demo";
+import { DEMO_JOBS, DEMO_MAIN_CV } from "./data/demo";
 import { fakeApi, renderApp, setMobile } from "./test-utils";
 
 let api: ReturnType<typeof fakeApi>;
@@ -19,11 +19,18 @@ afterEach(() => {
 });
 
 const [demoA, demoB] = DEMO_JOBS;
+const card = (name: RegExp) => screen.getByRole("article", { name });
 
-test("demo jobs share source experiences but differ in summary and highlights", () => {
-  expect(demoA.cv.summary).not.toEqual(demoB.cv.summary);
-  expect(demoA.cv.experiences.map((e) => e.id)).toEqual(demoB.cv.experiences.map((e) => e.id));
-  expect(demoA.cv.experiences[0].bullets).not.toEqual(demoB.cv.experiences[0].bullets);
+test("the demo jobs share one main CV; their suggestions differ", () => {
+  const ids = (d: (typeof DEMO_JOBS)[number]) => d.result.suggestions.map((s) => s.id);
+  expect(ids(demoA)).not.toEqual(ids(demoB));
+  for (const demo of DEMO_JOBS) {
+    for (const s of demo.result.suggestions) {
+      // every suggestion rests on a line that really is in the main CV
+      const lines = DEMO_MAIN_CV.experiences.flatMap((e) => e.bullets).map((b) => b.id);
+      expect(s.sources.every((r) => lines.includes(r.id))).toBe(true);
+    }
+  }
 });
 
 test("the home page never shows demo data", () => {
@@ -43,42 +50,66 @@ test("Explore demo opens the sample results with a demo badge", async () => {
   expect(screen.getByText(/replace manual, error-prone workflows/)).toBeInTheDocument();
 });
 
-test("demo: tailoring is instant, needs no upload and makes no request; each job gets its own CV and PDF", async () => {
+test("demo: suggestions appear without an upload or a request, and the preview starts as the main CV", async () => {
   const user = userEvent.setup();
   renderApp("/demo");
 
   await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
-  expect(screen.getByText(/What changed \(3 changes\)/)).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Preview CV" }));
-  expect(screen.getByTestId("cv-summary")).toHaveTextContent(demoA.cv.summary);
-  expect(screen.getByTestId("cv-summary")).toHaveClass("is-changed");
+  expect(screen.getByRole("heading", { name: "Suggestions for this application" })).toBeInTheDocument();
   expect(api.fetchMock).not.toHaveBeenCalled();
+  expect(screen.getByText(/Nothing accepted yet/)).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Preview CV" }));
+  expect(screen.getByTestId("cv-summary")).toHaveTextContent(DEMO_MAIN_CV.summary);
+});
+
+test("demo: accepting and rejecting changes only the draft; the PDF is exactly the draft", async () => {
+  const user = userEvent.setup();
+  renderApp("/demo");
+  await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
+
+  await user.click(within(card(/Rewrite summary/)).getByRole("button", { name: "Accept" }));
+  await user.click(within(card(/Move up/)).getByRole("button", { name: "Reject" }));
+  await waitFor(() => expect(api.calls("/v1/coach/apply")).toHaveLength(2)); // after the accept, after the reject
+  expect(Object.keys(api.body("/v1/coach/apply", 1).decisions)).toEqual(["summary"]);
+  expect(api.body("/v1/coach/apply", 1).cv).toEqual(DEMO_MAIN_CV); // the main CV is what is sent, never a draft
+
+  await user.click(screen.getByRole("button", { name: "Preview CV" }));
+  await waitFor(() => expect(screen.getByTestId("cv-summary")).toHaveTextContent(/invoice triage agent that routes 12,000/));
 
   await user.click(screen.getByRole("button", { name: "Download PDF" }));
   await waitFor(() => expect(api.calls("/v1/cv/render-pdf")).toHaveLength(1));
-  expect(api.body("/v1/cv/render-pdf")).toMatchObject({
-    company: demoA.job.company, job_title: demoA.job.title, cv: { summary: demoA.cv.summary },
-  });
+  const sent = api.body("/v1/cv/render-pdf");
+  expect(sent.cv.summary).toMatch(/invoice triage agent/);
+  expect(sent.cv.experiences[1].bullets[0].id).toBe("exp2.b1"); // the rejected move did not happen
+  expect(api.calls("/v1/coach/analyze")).toHaveLength(0);
+});
+
+test("demo: each job keeps its own decisions", async () => {
+  const user = userEvent.setup();
+  renderApp("/demo");
+  await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
+  await user.click(within(card(/Rewrite summary/)).getByRole("button", { name: "Accept" }));
 
   await user.click(screen.getByRole("button", { name: /Machine Learning Engineer/ }));
   await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
-  await user.click(screen.getByRole("button", { name: "Preview CV" }));
-  expect(screen.getByTestId("cv-summary")).toHaveTextContent(demoB.cv.summary);
-  await user.click(screen.getByRole("button", { name: "Download PDF" }));
-  await waitFor(() => expect(api.calls("/v1/cv/render-pdf")).toHaveLength(2));
-  expect(api.body("/v1/cv/render-pdf", 1).cv.summary).toBe(demoB.cv.summary);
-  expect(api.calls("/v1/cv/tailor")).toHaveLength(0);
+  expect(within(card(/Rewrite summary/)).getByRole("button", { name: "Accept" })).toBeInTheDocument(); // undecided here
+
+  await user.click(screen.getByRole("button", { name: /AI Automation Engineer/ }));
+  expect(within(card(/Rewrite summary/)).getByText("✓ Accepted")).toBeInTheDocument(); // still decided there
 });
 
-test("demo: a failed PDF download keeps the CV ready and can be retried", async () => {
+test("demo: a failed PDF download keeps the decisions and can be retried", async () => {
   const user = userEvent.setup();
   api.once("/v1/cv/render-pdf", () => new Response("nope", { status: 500 }));
   renderApp("/demo");
   await user.click(screen.getByRole("button", { name: "Tailor my CV" }));
+  await user.click(within(card(/Rewrite summary/)).getByRole("button", { name: "Accept" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled());
   await user.click(screen.getByRole("button", { name: "Download PDF" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Download failed");
-  expect(screen.getByText("✓ CV ready for this job")).toBeInTheDocument();
+  expect(within(card(/Rewrite summary/)).getByText("✓ Accepted")).toBeInTheDocument();
 
   await user.click(screen.getByRole("button", { name: "Try again" }));
   await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());

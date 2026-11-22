@@ -126,9 +126,9 @@ test("the confirmed CV is the edited one: tailoring uses it, and editing never c
   await user.type(screen.getByLabelText("City or remote"), "Berlin");
   await user.click(screen.getByRole("button", { name: "Search jobs" }));
   await user.click(await screen.findByRole("button", { name: "Tailor my CV" }));
-  await screen.findByText("✓ CV ready for this job");
+  await screen.findByRole("heading", { name: "Suggestions for this application" });
 
-  const sent = api.body("/v1/cv/tailor").cv;
+  const sent = api.body("/v1/coach/analyze").cv;
   expect(sent.experiences[0].employer).toBe("Test Corp");
   expect(sent.experiences[0].bullets.map((b: { id: string }) => b.id)).toEqual(["exp1.b1", "exp1.b2"]);
   expect(sent.experiences[0].bullets[1].text).toBe("Led the on-call rotation.");

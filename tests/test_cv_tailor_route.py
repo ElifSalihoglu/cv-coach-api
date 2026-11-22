@@ -73,3 +73,20 @@ def test_invalid_body_is_422_and_never_calls_the_model(monkeypatch, overrides):
     coach = FakeCoach()
     assert _post(monkeypatch, coach, **overrides).status_code == 422
     assert coach.calls == []
+
+
+def test_whitespace_only_differences_are_not_reported_as_changes(monkeypatch):
+    nbsp = chr(0xA0)
+    cv = {**CV, "experiences": [{"id": "exp1", "employer": "Acme", "title": "Engineer", "bullets": [
+        {"id": "exp1.b1", "text": f"Built a billing API for{nbsp}200 merchants\nusing  Python. "}]}]}
+
+    class SpacingCoach(FakeCoach):
+        async def tailor(self, cv, job_title, job_description):
+            tidy = cv.model_copy(deep=True)
+            tidy.experiences[0].bullets[0].text = "Built a billing API for 200 merchants using Python."
+            return TailoredCVResult(cv=tidy, warnings=[])
+
+    response = _post(monkeypatch, SpacingCoach(), cv=cv)
+
+    assert response.status_code == 200
+    assert response.json()["changes"] == []

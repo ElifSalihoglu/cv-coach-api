@@ -5,6 +5,7 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.routes_coach import router as coach_router
 from app.api.v1.routes_cv import router as cv_router
 from app.api.v1.routes_jobs import router as jobs_router
 from app.logging_utils import configure_logging, log_event, request_id_var
@@ -14,6 +15,7 @@ logger = logging.getLogger("app.request")
 
 app = FastAPI(title="CV Coach API")
 app.include_router(cv_router)
+app.include_router(coach_router)
 app.include_router(jobs_router)
 app.add_middleware(
     CORSMiddleware,

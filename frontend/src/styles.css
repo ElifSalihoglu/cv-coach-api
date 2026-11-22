@@ -174,12 +174,17 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 /* ---- what changed ---- */
 .changes { margin: 12px 0 0; }
 .changes summary { cursor: pointer; font-weight: 700; }
+.changes-counts { display: block; font-weight: 400; font-size: .85rem; color: var(--muted); }
+.change-group { margin: 12px 0 0; }
+.change-group h4 { margin: 0 0 6px; font-size: .9rem; color: var(--muted); }
+.change-kind { font-weight: 700; font-size: .9rem; }
+.change mark { background: #fff0b8; color: inherit; border-radius: 2px; padding: 0 1px; }
+.change-before mark { background: #fde0e0; text-decoration: line-through; }
 .changes ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .change { padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
 .change p { margin: 0 0 4px; }
-.change-where { font-weight: 700; font-size: .9rem; }
 .change-detail { color: var(--accent); font-size: .85rem; font-weight: 600; }
-.change-before { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--border); }
+.change-before { color: var(--muted); }
 .change-after { color: var(--text); }
 .tag {
   display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase;
@@ -206,3 +211,39 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 .bullet-edit { display: flex; gap: 8px; align-items: flex-start; }
 .bullet-edit .field { flex: 1; }
 .bullet-edit button { margin-top: 26px; }
+
+/* ---- coach: focus, suggestions, questions ---- */
+.coach-ready h4 { margin: 18px 0 8px; font-size: 1rem; }
+.coach-focus { margin: 0 0 8px; }
+.posting-summary { margin: 8px 0 12px; }
+.posting-summary summary { cursor: pointer; font-weight: 600; }
+.posting-summary h5 { margin: 10px 0 4px; font-size: .85rem; color: var(--muted); }
+.posting-summary ul { margin: 0; padding-left: 20px; }
+.focus-picker h4 { margin: 0 0 8px; }
+.tracks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.track { padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.track p { margin: 4px 0 0; }
+.track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.track-evidence { margin: 6px 0 0; padding-left: 18px; font-size: .9rem; }
+.other-tracks { margin-top: 12px; }
+.other-tracks summary { cursor: pointer; color: var(--muted); margin-bottom: 8px; }
+.suggestions { display: flex; flex-direction: column; gap: 12px; }
+.suggestion { padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.suggestion.is-accepted, .suggestion.is-edited { border-color: #1a7f37; background: #f4fbf6; }
+.suggestion.is-rejected { opacity: .65; }
+.suggestion p { margin: 0 0 6px; }
+.suggestion-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.suggestion-kind { font-weight: 700; }
+.level { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); text-transform: uppercase; letter-spacing: .04em; }
+.level-required { color: var(--accent); border-color: var(--accent); }
+.level-preferred { color: var(--muted); }
+.related { font-size: .75rem; font-weight: 600; color: #8a5a00; background: #fff6e0; border: 1px solid #f0d9a0; padding: 1px 8px; border-radius: 999px; }
+.suggestion-line, .suggestion-change { font-size: .92rem; }
+.suggestion-why { color: var(--muted); font-size: .9rem; }
+.suggestion mark { background: #fff0b8; color: inherit; border-radius: 2px; padding: 0 1px; }
+.suggestion .change-before mark { background: #fde0e0; text-decoration: line-through; }
+.suggestion-edit, .suggestion-confirm { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); }
+.suggestion-confirm ul { margin: 4px 0 8px; padding-left: 20px; }
+.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-weight: 600; }
+.decision { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.suggestion select { font: inherit; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }

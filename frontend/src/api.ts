@@ -1,4 +1,6 @@
-import type { CvChange, FoundJob, PdfSource, StructuredCV } from "./types";
+import type {
+  Addition, AppliedCv, Claim, CoachResult, Decision, FoundJob, PdfSource, StructuredCV, Suggestion,
+} from "./types";
 
 export interface PdfDownload { blob: Blob; filename: string }
 
@@ -114,15 +116,39 @@ export async function searchJobs(params: SearchParams): Promise<FoundJob[]> {
   return (await response.json()).jobs as FoundJob[];
 }
 
-export interface TailoredCv { cv: StructuredCV; warnings: string[]; changes: CvChange[] }
-
-/** One model call: the confirmed CV tailored to one job. */
-export async function tailorCv(cv: StructuredCV, job: FoundJob): Promise<TailoredCv> {
-  const response = await request("/v1/cv/tailor", {
+/** One model call: read the posting against the confirmed CV. Without a focus the answer
+ *  is either suggestions (a clear posting) or the tracks to choose from. */
+export async function analyzeJob(cv: StructuredCV, job: FoundJob, focus: string): Promise<CoachResult> {
+  const response = await request("/v1/coach/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cv, job_title: job.title, job_description: job.job_description }),
+    body: JSON.stringify({ cv, job_title: job.title, job_description: job.job_description, focus }),
   });
-  const body = await response.json();
-  return { cv: body.cv, warnings: body.warnings ?? [], changes: body.changes ?? [] };
+  return (await response.json()) as CoachResult;
+}
+
+/** The main CV with the accepted suggestions applied. No model call. */
+export async function applyDecisions(payload: {
+  cv: StructuredCV; suggestions: Suggestion[]; decisions: Record<string, Decision>;
+  additions: Addition[]; job_description: string;
+}): Promise<AppliedCv> {
+  const response = await request("/v1/coach/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()) as AppliedCv;
+}
+
+/** What a text the user wrote says that their CV does not. No model call. */
+export async function checkText(payload: {
+  cv: StructuredCV; job_description: string; kind: "rewrite" | "summary" | "add";
+  source_id?: string; text: string;
+}): Promise<{ claims: Claim[]; message: string }> {
+  const response = await request("/v1/coach/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()) as { claims: Claim[]; message: string };
 }
