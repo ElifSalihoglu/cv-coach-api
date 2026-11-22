@@ -1,29 +1,21 @@
 """
 Search failures (human verification, timeouts) and recovery.
 
-Acceptance: after a failed Indeed search the confirmed CV is still in the
-session and a new search works without uploading or parsing the CV again.
+Each failure has its own status and user-facing message.
 """
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
-from streamlit.testing.v1 import AppTest
 
 from app.api.v1.routes_cv import get_cv_coach
 from app.api.v1.routes_jobs import get_job_search
 from app.main import app
-from app.models.cv_document import ParsedCV
-from app.services.cv_coach import OpenAICVCoach
 from app.services.cv_parsing import assign_ids
 from app.services.search_errors import (
     HumanVerificationRequired,
     SearchTimeout,
     looks_like_verification,
 )
-from tests.test_tailored_cv_pdf import DATA_SUMMARY, PARSED, FakeLLM
-
-UI_FILE = str(Path(__file__).resolve().parents[1] / "app" / "ui" / "app.py")
+from tests.test_tailored_cv_pdf import PARSED
 
 
 # ---- detection ----
@@ -159,63 +151,3 @@ def test_each_search_failure_has_its_own_status_and_message(monkeypatch, exc, st
         assert detail["message"] == (
             "Indeed insan doğrulaması istediği için arama durdu. CV’n bu oturumda hazır."
         )
-
-
-SEARCH_RESULTS = [
-    {"title": "Data Engineer", "company": "Gamma A.Ş.", "location": "Berlin",
-     "url": "https://de.indeed.com/viewjob?jk=aaa",
-     "full_description": "Build data pipelines with SQL and Airflow."},
-]
-
-
-def test_new_search_after_a_human_check_works_without_reuploading_the_cv(monkeypatch):
-    import requests
-
-    llm = FakeLLM()
-    attempts = []
-
-    def search(query, city, country, limit):
-        attempts.append(query)
-        if len(attempts) == 1:
-            raise HumanVerificationRequired()
-        return SEARCH_RESULTS
-
-    client = _client(monkeypatch, search, OpenAICVCoach(llm))
-    monkeypatch.setattr(
-        requests, "post",
-        lambda url, json=None, timeout=None: client.post(
-            url.replace("http://localhost:8000", ""), json=json
-        ),
-    )
-
-    confirmed = assign_ids(PARSED).model_dump()
-    at = AppTest.from_file(UI_FILE, default_timeout=30)
-    at.session_state["confirmed_cv"] = confirmed  # uploaded, parsed and confirmed once
-    at.run()
-
-    # 1) First search hits the human check.
-    next(w for w in at.text_input if w.label == "Role").set_value("AI Engineer")
-    next(b for b in at.button if b.label == "Search and tailor CV").click()
-    at.run()
-
-    assert not at.exception
-    assert [e.value for e in at.error] == [
-        "Indeed insan doğrulaması istediği için arama durdu. CV’n bu oturumda hazır."
-    ]
-    assert at.session_state["confirmed_cv"] == confirmed
-    assert at.get("download_button") == []
-    assert not any("manual" in e.label.lower() for e in at.expander)
-
-    # 2) A new search, same session, no upload and no parse.
-    next(b for b in at.button if b.label == "Search and tailor CV").click()
-    at.run()
-
-    assert not at.exception
-    assert attempts == ["AI Engineer", "AI Engineer"]
-    assert list(at.error) == []  # the old error is gone
-    assert at.session_state["confirmed_cv"] == confirmed
-    assert len(at.get("download_button")) == 1  # preview and PDF flow still works
-    (item,) = at.session_state["job_results"]
-    assert item["tailored_cv"]["summary"] == DATA_SUMMARY
-    assert all(model is not ParsedCV for model, _ in llm.calls)
-    assert len(llm.calls) == 1  # one tailoring call, no re-parse

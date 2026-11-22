@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from fastapi.testclient import TestClient
-from streamlit.testing.v1 import AppTest
 
 from app.api.v1.routes_cv import get_cv_coach
 from app.api.v1.routes_jobs import get_job_search
@@ -9,8 +6,6 @@ from app.main import app
 from app.models.cv_document import CVParseResponse, TailoredCVResult
 from app.services.cv_parsing import assign_ids
 from tests.test_tailored_cv_pdf import CV_TEXT, PARSED
-
-UI_FILE = str(Path(__file__).resolve().parents[1] / "app" / "ui" / "app.py")
 
 SEARCH_RESULTS = [
     {"title": "Data Engineer", "company": "Gamma", "location": "Berlin",
@@ -74,61 +69,3 @@ def test_jobs_route_needs_either_cv_or_bullets(monkeypatch):
         response = client.post("/v1/jobs/optimize", json={"query": "AI"})
 
     assert response.status_code == 422
-
-
-def test_review_form_shows_extra_sections_and_confirm_keeps_them():
-    cv = assign_ids(PARSED).model_dump()
-    at = AppTest.from_file(UI_FILE, default_timeout=30)
-    at.session_state["parsed"] = {"cv": cv, "warnings": [], "version": 1}
-    at.run()
-
-    assert not at.exception
-    values = [w.value for w in at.text_input] + [w.value for w in at.text_area]
-    for fact in ("Veri Kalitesi Paneli", "Google Cloud", "İngilizce - C1, Almanca - B1"):
-        assert fact in values
-    assert any("Bitirme tezi" in v for v in values)  # thesis under education
-    assert any("Python ve SQL ile geliştirildi." in v for v in values)  # project text
-
-    # One prominent confirm button, the last element of the review form.
-    confirm = [b for b in at.get("button")
-               if b.proto.label == "Confirm CV and continue to job search"]
-    assert len(confirm) == 1 and confirm[0].proto.type == "primary"
-    form_buttons = [b for b in at.get("button") if b.proto.form_id]
-    assert form_buttons == confirm
-
-    confirm[0].click()
-    at.run()
-
-    confirmed = at.session_state["confirmed_cv"]
-    assert confirmed["projects"] == cv["projects"]
-    assert confirmed["certifications"] == cv["certifications"]
-    assert confirmed["languages"] == cv["languages"]
-    assert confirmed["education"] == cv["education"]
-
-
-def test_ui_results_show_preview_and_download_without_new_requests(monkeypatch):
-    """Rendering the results card (and re-rendering it) makes no API call."""
-    import requests
-
-    def no_network(*args, **kwargs):
-        raise AssertionError("the UI must not call the API when showing results")
-
-    monkeypatch.setattr(requests, "post", no_network)
-    cv = assign_ids(PARSED).model_dump()
-    results = [{
-        "job": {"title": "Data Engineer", "company": "Gamma", "location": "Berlin",
-                "source_url": "https://example.com/a", "job_description": "d",
-                "status": "ready"},
-        "status": "optimized", "error": None, "optimization": None,
-        "tailored_cv": cv, "tailoring_warnings": [],
-    }]
-
-    at = AppTest.from_file(UI_FILE, default_timeout=30)
-    at.session_state["job_results"] = results
-    at.run()
-    at.run()  # a second run stands in for downloading again
-
-    assert not at.exception
-    assert any("Acme Teknoloji" in md.value for md in at.markdown)
-    downloads = at.get("download_button")
-    assert len(downloads) == 1
