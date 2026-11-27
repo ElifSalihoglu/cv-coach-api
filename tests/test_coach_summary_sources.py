@@ -4,11 +4,11 @@ Summary cards: what the model wrote, what we keep, and what the user is shown.
 The three acceptance examples use the exact summaries from the saved live run
 (synthetic CV and posting), replayed offline: no model call.
 """
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.models.cv_document import CVBullet
 from app.services.job_coach import build_result, unsupported_design_claims
-from tests.coach_scenarios import Q_AI, Q_AI_EVAL, Q_PY
+from tests.fixtures.coach_scenarios import Q_AI, Q_AI_EVAL, Q_PY
 
 # r2/python: the model claims design work the CV does not have (it only has integration)
 PY_DESIGNING = (

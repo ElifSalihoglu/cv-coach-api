@@ -5,11 +5,11 @@ from fastapi.testclient import TestClient
 from app.api.v1.routes_coach import get_job_coach
 from app.careers.assembly import build_default_general_agent
 from app.careers.facade import CoachFacade
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
-from app.evals.general_fixtures import NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.general_fixtures import NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE
 from app.main import app
-from tests.coach_scenarios import ai_output
-from tests.general_scenarios import nurse_output
+from tests.fixtures.coach_scenarios import ai_output
+from tests.fixtures.general_scenarios import nurse_output
 from tests.test_coach_regression import RecordingLLM
 
 IT_BODY = {"cv": CV.model_dump(), "job_title": JOB_TITLE, "job_description": JOB_DESCRIPTION, "focus": "AI"}

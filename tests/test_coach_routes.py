@@ -8,10 +8,10 @@ from pypdf import PdfReader
 
 from app.api.v1 import routes_coach
 from app.api.v1.routes_coach import get_job_coach
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.main import app
 from app.services.job_coach import ITCareerCoach
-from tests.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output, python_output, tracks_output
+from tests.fixtures.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output, python_output, tracks_output
 
 BODY = {"cv": CV.model_dump(), "job_title": JOB_TITLE, "job_description": JOB_DESCRIPTION}
 

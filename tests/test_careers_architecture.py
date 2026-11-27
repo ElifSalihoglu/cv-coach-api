@@ -8,10 +8,10 @@ from app.careers.agents.it import IT_AGENT, IT_PROFILE
 from app.careers.core.base_agent import BaseCareerAgent, SpecialistAgent
 from app.careers.core.gates import CORE_GATES, Gate
 from app.careers.core.state import AgentCard, CareerCase
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.services.job_coach import ITCareerCoach
-from tests.coach_scenarios import FakeLLM, Q_REQ
+from tests.fixtures.coach_scenarios import FakeLLM, Q_REQ
 
 CORE_DIR = Path(__file__).resolve().parents[1] / "app" / "careers" / "core"
 

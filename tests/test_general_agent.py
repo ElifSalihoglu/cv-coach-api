@@ -10,13 +10,13 @@ from app.careers.registry import AgentRegistry
 from app.careers.agents.it import IT_AGENT, IT_PROFILE
 from app.careers.agents.general.prompt import GENERAL_SYSTEM_PROMPT
 from app.careers.core.state import CareerCase
-from app.evals.general_fixtures import (
+from tests.fixtures.general_fixtures import (
     MARKETING_CV, MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, MECH_CV, MECH_JOB_DESCRIPTION,
     MECH_JOB_TITLE, NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
 )
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.prompts.coach_templates import COACH_SYSTEM_PROMPT
-from tests.general_scenarios import (
+from tests.fixtures.general_scenarios import (
     MECH_DESIGN_SUMMARY, MECH_LICENSED_SUMMARY, NURSE_SUMMARY, Q_COMMUNICATION, Q_DESIGN, Q_YEARS,
     marketing_output, mech_output, nurse_output,
 )

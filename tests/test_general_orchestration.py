@@ -9,8 +9,8 @@ from app.careers.assembly import build_default_general_agent, build_default_regi
 from app.careers.core.gates import Gate
 from app.careers.core.state import CareerCase, OrchestrationError
 from app.careers.registry import AgentRegistry, UnknownDomainError
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
-from app.evals.general_fixtures import (
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.general_fixtures import (
     MARKETING_CV, MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, NURSE_CV,
     NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
 )
@@ -18,8 +18,8 @@ from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.prompts.coach_templates import COACH_SYSTEM_PROMPT
 from app.services.job_coach import ITCareerCoach
 from app.services.llm_client import LLMTimeoutError
-from tests.coach_scenarios import ai_output, tracks_output
-from tests.general_scenarios import marketing_output, nurse_output
+from tests.fixtures.coach_scenarios import ai_output, tracks_output
+from tests.fixtures.general_scenarios import marketing_output, nurse_output
 from tests.test_coach_regression import RecordingLLM
 from tests.toy_agents import Broken, specialist
 

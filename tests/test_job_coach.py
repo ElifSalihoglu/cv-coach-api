@@ -3,10 +3,10 @@ import asyncio
 
 import pytest
 
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelQuestion, ModelRequirement, ModelSuggestion
 from app.services.job_coach import ITCareerCoach, build_result, coach_input
-from tests.coach_scenarios import (
+from tests.fixtures.coach_scenarios import (
     AI_SUMMARY, PY_SUMMARY, Q_AI, Q_AI_EVAL, Q_API, Q_PREF_K8S, Q_PREF_PG, Q_PY,
     FakeLLM, ai_output, python_output, tracks_output,
 )
@@ -353,7 +353,7 @@ def test_an_honest_related_explanation_is_kept_as_written():
 
 # ---- a choice only where the posting offers one ----
 
-from app.evals.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE  # noqa: E402
+from tests.fixtures.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE  # noqa: E402
 from app.services.job_coach import offers_choice  # noqa: E402
 
 

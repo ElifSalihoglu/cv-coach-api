@@ -9,8 +9,8 @@ from app.careers.agents.general import GENERAL_CARD
 from app.careers.assembly import build_default_registry
 from app.careers.registry import AgentRegistry, UnknownDomainError
 from app.careers.router import DefaultRouter
-from app.evals.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, JOB_DESCRIPTION, JOB_TITLE
-from app.evals.general_fixtures import (
+from tests.fixtures.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.general_fixtures import (
     MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, MECH_JOB_DESCRIPTION, MECH_JOB_TITLE,
     NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
 )

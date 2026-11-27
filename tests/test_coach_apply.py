@@ -3,14 +3,14 @@ import asyncio
 
 import pytest
 
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import Addition, AdditionTarget, ApplyRequest, CheckRequest, Decision
 from app.models.cv_document import CVBullet, CVProject
 from app.services.coach_apply import (
     DecisionError, UnconfirmedClaims, apply_decisions, check_text,
 )
 from app.services.job_coach import ITCareerCoach
-from tests.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output
+from tests.fixtures.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output
 
 ACCEPT = Decision(action="accept")
 

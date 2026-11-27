@@ -18,11 +18,11 @@ from app.careers.core.engine import DEFAULT_ENGINE, AgentEngine
 from app.careers.core.gates import Gate
 from app.careers.core.state import CareerCase
 from app.careers.registry import AgentRegistry
-from app.evals.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 from app.services.llm_client import LLMOutputError, LLMTimeoutError
-from tests.coach_scenarios import ai_output, tracks_output
+from tests.fixtures.coach_scenarios import ai_output, tracks_output
 from tests.test_coach_regression import RecordingLLM
 from tests.toy_agents import specialist
 
