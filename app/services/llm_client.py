@@ -7,7 +7,6 @@ import openai
 from pydantic import BaseModel, ValidationError
 
 from app.logging_utils import log_event
-from app.models.schemas import GeneratedCVContent
 
 logger = logging.getLogger("app.llm")
 
@@ -63,7 +62,7 @@ class LLMClient:
         self,
         system_prompt: str,
         user_content: dict[str, Any],
-        output_model: type[T] = GeneratedCVContent,  # type: ignore[assignment]
+        output_model: type[T],
     ) -> T:
         started = time.perf_counter()
         # ensure_ascii=False keeps Turkish characters as they are in the prompt.
@@ -85,12 +84,6 @@ class LLMClient:
                 duration_ms=round((time.perf_counter() - started) * 1000), **details,
             )
             raise
-        if isinstance(result, GeneratedCVContent):
-            details.update(
-                bullets_out=len(result.improved_bullets),
-                summary_chars=len(result.summary),
-                headline_chars=len(result.linkedin_headline),
-            )
         log_event(
             logger, logging.INFO, "llm_call",
             model=self._model, outcome="ok",

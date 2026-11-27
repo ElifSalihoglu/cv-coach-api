@@ -4,11 +4,8 @@ import time
 from typing import Callable
 
 from app.logging_utils import log_event
-from app.models.cv_document import StructuredCV
-from app.models.schemas import JobOptimizationResult, MatchedJob, SearchResultJob
-from app.services.cv_coach import CVCoach
+from app.models.schemas import MatchedJob, SearchResultJob
 from app.services.job_matching import job_key, match_jobs
-from app.services.job_optimization import optimize_for_jobs
 
 logger = logging.getLogger("app.jobs")
 
@@ -99,32 +96,3 @@ async def search_jobs(
                 duration_ms=duration,
             )
     return matched
-
-
-async def search_and_optimize(
-    *,
-    search: SearchFn,
-    coach: CVCoach,
-    query: str,
-    city: str,
-    country: str,
-    cv_bullets: list[str],
-    cv: StructuredCV | None = None,
-    limit: int = 5,
-    source: str = "indeed",
-) -> list[JobOptimizationResult]:
-    """One search (with descriptions) -> per-job optimization."""
-    matched = await search_jobs(
-        search=search, query=query, city=city, country=country,
-        limit=limit, source=source,
-    )
-    optimized = await optimize_for_jobs(coach, matched, cv_bullets, cv)
-
-    counts = {"optimized": 0, "missing_description": 0, "failed": 0}
-    for item in optimized:
-        counts[item.status] += 1
-    log_event(
-        logger, logging.INFO, "jobs_summary",
-        total=len(optimized), **counts,
-    )
-    return optimized

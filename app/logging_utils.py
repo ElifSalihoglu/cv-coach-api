@@ -13,7 +13,6 @@ import re
 from contextvars import ContextVar
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
-job_order_var: ContextVar[int | None] = ContextVar("job_order", default=None)
 
 _SAFE_VALUE = re.compile(r"[A-Za-z0-9_.:/\-]{1,64}")
 
@@ -32,8 +31,6 @@ def log_event(logger: logging.Logger, level: int, event: str, **fields: object) 
     parts = [f"event={event}", f"request_id={request_id}"]
 
     job = fields.pop("job", None)
-    if job is None:
-        job = job_order_var.get()
     if job is not None:
         parts.append(f"job={_format_value(job)}")
 

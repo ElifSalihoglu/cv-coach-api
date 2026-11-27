@@ -131,34 +131,3 @@ class CVParseResponse(BaseModel):
         default_factory=list,
         description="Fields the user should check against the original text.",
     )
-
-
-# ---- what the model returns when tailoring ----
-
-
-class TailoredBullet(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    source_id: str
-    text: str = Field(..., min_length=1)
-
-
-class TailoredExperience(BaseModel):
-    id: str
-    bullets: List[TailoredBullet] = Field(default_factory=list)
-
-
-class TailoredContent(BaseModel):
-    """The only parts of the CV the model may write for a job."""
-
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    summary: str = Field(..., min_length=1)
-    experiences: List[TailoredExperience] = Field(default_factory=list)
-
-
-class TailoredCVResult(BaseModel):
-    """A job-specific CV version plus notes about anything we reverted."""
-
-    cv: StructuredCV
-    warnings: List[str] = Field(default_factory=list)

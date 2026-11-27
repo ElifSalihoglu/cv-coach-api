@@ -6,16 +6,13 @@ Each failure has its own status and user-facing message.
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1.routes_cv import get_cv_coach
 from app.api.v1.routes_jobs import get_job_search
 from app.main import app
-from app.services.cv_parsing import assign_ids
 from app.services.search_errors import (
     HumanVerificationRequired,
     SearchTimeout,
     looks_like_verification,
 )
-from tests.test_tailored_cv_pdf import PARSED
 
 
 # ---- detection ----
@@ -120,8 +117,7 @@ def test_plain_timeout_is_its_own_error_and_closes_the_driver(monkeypatch):
 
 # ---- routes ----
 
-def _client(monkeypatch, search, coach=None):
-    monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: coach)
+def _client(monkeypatch, search):
     monkeypatch.setitem(app.dependency_overrides, get_job_search, lambda: search)
     return TestClient(app)
 
@@ -138,10 +134,9 @@ def _raising(exc):
     (RuntimeError("chrome crashed"), 502, "search_failed"),
 ])
 def test_each_search_failure_has_its_own_status_and_message(monkeypatch, exc, status, code):
-    cv = assign_ids(PARSED).model_dump()
-    client = _client(monkeypatch, _raising(exc), coach=object())
+    client = _client(monkeypatch, _raising(exc))
 
-    response = client.post("/v1/jobs/optimize", json={"query": "AI", "cv": cv})
+    response = client.post("/v1/jobs/search", json={"query": "AI", "city": "Berlin"})
 
     assert response.status_code == status
     detail = response.json()["detail"]

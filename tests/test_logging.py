@@ -12,6 +12,7 @@ from app.api.v1.routes_cv import get_cv_coach
 from app.api.v1.routes_jobs import get_job_search
 from app.logging_utils import log_event
 from app.main import app
+from app.models.cv_document import ParsedCV
 from app.services.cv_coach import OpenAICVCoach
 from app.services.llm_client import LLMClient, LLMError
 
@@ -22,9 +23,8 @@ SECRET_COMPANY = "ZXQ-UNIQUE-COMPANY"
 FAKE_REQUEST = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
 
 MODEL_OUTPUT = {
-    "improved_bullets": ["ZXQ-UNIQUE-MODEL-OUTPUT bullet"],
+    "name": "ZXQ-UNIQUE-MODEL-OUTPUT name",
     "summary": "ZXQ-UNIQUE-MODEL-OUTPUT summary",
-    "linkedin_headline": "ZXQ-UNIQUE-MODEL-OUTPUT headline",
 }
 SECRETS = [
     SECRET_CV, SECRET_QUERY, SECRET_JOB_TEXT, SECRET_COMPANY,
@@ -71,7 +71,7 @@ def by_event(caplog, event):
 # ---------------------------------------------------------------- acceptance
 
 
-def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkeypatch):
+def test_a_search_request_logs_one_request_id_and_one_line_per_stage(caplog, monkeypatch):
     caplog.set_level(logging.INFO, logger="app")
     search_results = [
         {
@@ -87,8 +87,6 @@ def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkey
         },
         {"title": "", "company": "", "location": "", "url": "", "full_description": ""},
     ]
-    coach = OpenAICVCoach(LLMClient(good_openai(), model="gpt-test"))
-    monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: coach)
     monkeypatch.setitem(
         app.dependency_overrides, get_job_search,
         lambda: (lambda query, city, country, limit: search_results),
@@ -96,8 +94,7 @@ def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkey
 
     with TestClient(app) as client:
         response = client.post(
-            "/v1/jobs/optimize",
-            json={"query": SECRET_QUERY, "cv_bullets": [SECRET_CV], "limit": 5},
+            "/v1/jobs/search", json={"query": SECRET_QUERY, "city": "Berlin", "limit": 5}
         )
 
     assert response.status_code == 200
@@ -109,7 +106,7 @@ def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkey
     assert "-" not in request_ids
 
     start = by_event(caplog, "jobs_request")[0].getMessage()
-    assert "endpoint=/v1/jobs/optimize" in start and "max_jobs=5" in start
+    assert "endpoint=/v1/jobs/search" in start and "max_jobs=5" in start
 
     search = by_event(caplog, "job_search")[0].getMessage()
     for expected in ("source=indeed", "outcome=ok", "cards=3", "skipped_no_url=1",
@@ -126,16 +123,7 @@ def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkey
     ok_detail = [r for r in by_event(caplog, "job_detail") if r.levelno == logging.INFO][0]
     assert "job=1" in ok_detail.getMessage()
 
-    # the LLM call carries the same request id, the job position, model and tokens
-    llm_lines = by_event(caplog, "llm_call")
-    assert len(llm_lines) == 1  # nothing is sent for the job without a description
-    llm = llm_lines[0].getMessage()
-    for expected in ("job=1", "model=gpt-test", "outcome=ok", "tokens_in=321", "tokens_out=45"):
-        assert expected in llm
-
-    summary = by_event(caplog, "jobs_summary")[0].getMessage()
-    assert "optimized=1 missing_description=1 failed=0" in summary
-    assert "total=2" in summary
+    assert not by_event(caplog, "llm_call")  # searching never calls a model
 
     end = by_event(caplog, "request_end")[0].getMessage()
     assert "status=200" in end and "duration_ms=" in end
@@ -150,15 +138,9 @@ def test_two_job_request_logs_one_request_id_and_one_line_summary(caplog, monkey
 
 
 def _search_with(monkeypatch, search):
-    monkeypatch.setitem(
-        app.dependency_overrides, get_cv_coach,
-        lambda: OpenAICVCoach(LLMClient(good_openai(), model="gpt-test")),
-    )
     monkeypatch.setitem(app.dependency_overrides, get_job_search, lambda: search)
     with TestClient(app) as client:
-        return client.post(
-            "/v1/jobs/optimize", json={"query": SECRET_QUERY, "cv_bullets": [SECRET_CV]}
-        )
+        return client.post("/v1/jobs/search", json={"query": SECRET_QUERY, "city": "Berlin"})
 
 
 def test_zero_results_and_scraper_error_are_distinguishable(caplog, monkeypatch):
@@ -205,7 +187,6 @@ def test_detail_page_not_opened_is_told_apart_from_empty_description(caplog, mon
     ]
     assert "job=1" in reasons[0] and "reason=detail_open_failed" in reasons[0]
     assert "job=2" in reasons[1] and "reason=description_empty" in reasons[1]
-    assert "missing_description=2" in by_event(caplog, "jobs_summary")[0].getMessage()
 
 
 # ---------------------------------------------------------- LLM client
@@ -213,7 +194,7 @@ def test_detail_page_not_opened_is_told_apart_from_empty_description(caplog, mon
 
 def _run_llm(**kwargs):
     client = LLMClient(fake_openai(**kwargs), model="gpt-test")
-    return asyncio.run(client.generate("system prompt", {"cv": SECRET_CV}))
+    return asyncio.run(client.generate("system prompt", {"cv": SECRET_CV}, ParsedCV))
 
 
 @pytest.mark.parametrize(
@@ -254,15 +235,14 @@ def test_llm_call_logs_start_and_enriched_result_without_content(caplog):
         model="gpt-test",
     )
 
-    asyncio.run(client.generate("system prompt", {"cv": SECRET_CV}))
+    asyncio.run(client.generate("system prompt", {"cv": SECRET_CV}, ParsedCV))
 
     start = by_event(caplog, "llm_call_start")[0].getMessage()
     assert "model=gpt-test" in start and "temperature=0.3" in start
     assert "input_chars=" in start
     done = by_event(caplog, "llm_call")[0].getMessage()
     for expected in ("outcome=ok", "tokens_in=412", "tokens_out=96", "finish_reason=stop",
-                     "served_model=gpt-test-2026-01-01", "bullets_out=1",
-                     "summary_chars=", "headline_chars="):
+                     "served_model=gpt-test-2026-01-01"):
         assert expected in done
     assert "ZXQ-UNIQUE" not in caplog.text
 
@@ -271,7 +251,7 @@ def test_truncated_answer_shows_finish_reason_length(caplog):
     caplog.set_level(logging.INFO, logger="app")
 
     with pytest.raises(LLMError):
-        _run_llm(content='{"improved_bullets": ["cut off', finish_reason="length")
+        _run_llm(content='{"name": "cut off', finish_reason="length")
 
     message = by_event(caplog, "llm_call")[0].getMessage()
     assert "reason=llm_invalid_output" in message and "finish_reason=length" in message
@@ -286,53 +266,20 @@ def test_llm_success_without_usage_logs_no_token_fields(caplog):
     assert "outcome=ok" in message and "tokens_in" not in message
 
 
-def test_single_cv_endpoint_uses_the_same_llm_logs(caplog, monkeypatch):
+def test_the_parse_endpoint_logs_the_llm_call_under_the_request_id_without_content(caplog, monkeypatch):
     caplog.set_level(logging.INFO, logger="app")
     coach = OpenAICVCoach(LLMClient(good_openai(), model="gpt-test"))
     monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: coach)
 
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/cv/optimize",
-            json={"job_title": "AI Engineer", "job_description": SECRET_JOB_TEXT,
-                  "current_bullets": [SECRET_CV]},
-        )
+        response = client.post("/v1/cv/parse", json={"cv_text": SECRET_CV})
 
     assert response.status_code == 200
     llm = by_event(caplog, "llm_call")[0]
     assert llm.request_id == response.headers["X-Request-ID"]
     assert "tokens_in=321" in llm.getMessage()
     assert "job=" not in llm.getMessage()
-    assert SECRET_CV not in caplog.text and SECRET_JOB_TEXT not in caplog.text
-
-
-def test_unexpected_optimize_error_is_logged_with_type_only(caplog, monkeypatch):
-    caplog.set_level(logging.INFO, logger="app")
-
-    class Boom:
-        async def optimize(self, request):
-            raise ValueError(f"leaky message {SECRET_CV}")
-
-    monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: Boom())
-    monkeypatch.setitem(
-        app.dependency_overrides, get_job_search,
-        lambda: (lambda q, c, k, n: [{
-            "title": "A", "company": "b", "location": "c",
-            "url": "https://de.indeed.com/viewjob?jk=a", "full_description": "text",
-        }]),
-    )
-
-    with TestClient(app) as client:
-        response = client.post(
-            "/v1/jobs/optimize", json={"query": "x", "cv_bullets": [SECRET_CV]}
-        )
-
-    assert response.status_code == 200
-    message = by_event(caplog, "optimize")[0].getMessage()
-    assert "reason=unexpected_error" in message and "exception=ValueError" in message
-    assert "job=1" in message
-    assert "failed=1" in by_event(caplog, "jobs_summary")[0].getMessage()
-    assert SECRET_CV not in caplog.text
+    assert SECRET_CV not in caplog.text and "ZXQ-UNIQUE-MODEL-OUTPUT" not in caplog.text
 
 
 # ---------------------------------------------------------- helper

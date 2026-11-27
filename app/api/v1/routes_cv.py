@@ -4,14 +4,9 @@ from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from app.models.cv_document import (
-    CVParseRequest,
-    CVParseResponse,
-    StructuredCV,
-    TailoredCVResult,
-)
+from app.models.cv_document import CVParseRequest, CVParseResponse, StructuredCV
 from app.services.cv_extract import (
     MAX_CV_BYTES,
     CVExtractError,
@@ -20,9 +15,7 @@ from app.services.cv_extract import (
     UnsupportedCVFile,
     extract_text,
 )
-from app.services.cv_changes import CVChange, describe_changes, readable_tailoring_warning
 from app.services.cv_render import cv_filename, render_pdf
-from app.models.schemas import CVOptimizeRequest, CVOptimizeResponse
 from app.services.cv_coach import CVCoach, OpenAICVCoach
 from app.services.llm_client import (
     LLMClient,
@@ -48,58 +41,6 @@ def get_cv_coach() -> CVCoach | None:
     if openai_client is None:
         return None
     return OpenAICVCoach(LLMClient(openai_client=openai_client, model=get_openai_model()))
-
-
-@router.post("/optimize", response_model=CVOptimizeResponse)
-async def optimize_cv(
-    request: CVOptimizeRequest,
-    coach: Annotated[CVCoach | None, Depends(get_cv_coach)],
-) -> CVOptimizeResponse:
-    if coach is None:
-        raise HTTPException(status_code=503, detail="CV coach is unavailable.")
-
-    try:
-        return await coach.optimize(request)
-    except LLMTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except LLMUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except LLMOutputError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-class CVTailorRequest(BaseModel):
-    cv: StructuredCV
-    job_title: str = Field(..., min_length=1)
-    job_description: str = Field(..., min_length=1, max_length=20_000)
-
-
-class CVTailorResponse(TailoredCVResult):
-    changes: list[CVChange] = Field(
-        default_factory=list, description="What differs from the confirmed CV."
-    )
-
-
-@router.post("/tailor", response_model=CVTailorResponse)
-async def tailor_cv(
-    request: CVTailorRequest,
-    coach: Annotated[CVCoach | None, Depends(get_cv_coach)],
-) -> CVTailorResponse:
-    """One model call: the confirmed CV tailored to one job. Facts are never changed."""
-    if coach is None:
-        raise HTTPException(status_code=503, detail="CV coach is unavailable.")
-    try:
-        result = await coach.tailor(request.cv, request.job_title, request.job_description)
-        return CVTailorResponse(
-            cv=result.cv,
-            warnings=[readable_tailoring_warning(w, request.cv) for w in result.warnings],
-            changes=describe_changes(request.cv, result.cv),
-        )
-    except LLMTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except LLMUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except LLMOutputError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 class CVExtractResponse(BaseModel):

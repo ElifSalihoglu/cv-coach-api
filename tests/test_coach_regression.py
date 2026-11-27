@@ -27,7 +27,7 @@ from app.models.coaching import (
     CoachModelOutput, ModelEvidence, ModelQuestion, ModelRequirement, ModelSuggestion, ModelTrack,
 )
 from app.services.job_coach import ITCareerCoach, offers_choice, unsupported_design_claims
-from app.services.cv_tailoring import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
 from tests.coach_scenarios import (
     AI_SUMMARY, PY_SUMMARY, Q_AI, Q_API, Q_PREF_K8S, Q_PREF_PG, Q_PY, Q_REQ,
     ai_output, python_output, tracks_output,

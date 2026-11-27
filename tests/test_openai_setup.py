@@ -38,17 +38,12 @@ def test_get_cv_coach_builds_openai_coach_when_key_is_set(monkeypatch):
         get_cv_coach.cache_clear()
 
 
-def test_optimize_returns_503_without_api_key(monkeypatch):
+def test_parse_returns_503_without_api_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     get_cv_coach.cache_clear()
-    payload = {
-        "job_title": "AI Engineer",
-        "job_description": "Build and maintain Python APIs.",
-        "current_bullets": ["Built a Python API for internal reporting."],
-    }
     try:
         with TestClient(app) as client:
-            response = client.post("/v1/cv/optimize", json=payload)
+            response = client.post("/v1/cv/parse", json={"cv_text": "Jane Doe"})
     finally:
         get_cv_coach.cache_clear()
 

@@ -67,6 +67,6 @@ def agent_fingerprint(agent_id: str, model: str) -> dict[str, str]:
             *(_CAREERS / "core").glob("*.py"),
             *(p for p in own_dir.glob("*.py") if p.name != "prompt.py"),
         ]),
-        "faithfulness": files_digest([_CAREERS / "core" / "claims.py", ROOT / "app/services/cv_tailoring.py"]),
+        "faithfulness": files_digest([_CAREERS / "core" / "claims.py"]),
         "fixture": files_digest(ROOT / p for p in AGENT_FIXTURES[agent_id]),
     }

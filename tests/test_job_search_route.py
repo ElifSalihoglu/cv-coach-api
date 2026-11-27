@@ -95,3 +95,35 @@ def test_invalid_request_is_422(post, payload):
 ])
 def test_location_query(city, country, expected):
     assert location_query(city, country) == expected
+
+
+def test_a_search_that_crashes_is_a_502_with_a_code(monkeypatch):
+    def failing_search(query, city, country, limit):
+        raise RuntimeError("chrome crashed")
+
+    monkeypatch.setitem(app.dependency_overrides, get_job_search, lambda: failing_search)
+    with TestClient(app) as client:
+        response = client.post("/v1/jobs/search", json={"query": "AI", "city": "Berlin"})
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "search_failed"
+
+
+def test_a_missing_scraper_dependency_is_a_503_not_a_crash(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name.startswith("app.data_scraper"):
+            raise ModuleNotFoundError("No module named 'selenium'")
+        return real_import(name, *args, **kwargs)
+
+    app.dependency_overrides.pop(get_job_search, None)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    with TestClient(app) as client:
+        response = client.post("/v1/jobs/search", json={"query": "AI", "city": "Berlin"})
+
+    assert response.status_code == 503
+    assert "selenium" in response.json()["detail"]

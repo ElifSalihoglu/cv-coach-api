@@ -114,21 +114,6 @@ def faithfulness_problems(
     return problems
 
 
-def explain_problems(problems: list[Problem]) -> str:
-    """One plain sentence naming the flagged terms, e.g. for the user to read."""
-    parts = []
-    for problem in problems:
-        terms = ", ".join(problem.terms)
-        if problem.kind == "skills":
-            parts.append(f"mentioned {terms}, which we couldn't verify in your CV")
-        elif problem.kind == "numbers":
-            noun = "number" if len(problem.terms) == 1 else "numbers"
-            parts.append(f"used the {noun} {terms}, which {'is' if len(problem.terms) == 1 else 'are'} not in your CV")
-        else:
-            parts.append(f"claimed {terms}, which your CV does not say")
-    return "The draft " + " and ".join(parts) + "."
-
-
 def cv_source_text(cv: StructuredCV) -> str:
     parts = [cv.summary, *cv.skills]
     for exp in cv.experiences:
