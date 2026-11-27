@@ -1,10 +1,10 @@
 """
 Structured, privacy-safe logging helpers.
 
-Every line is `event=<name> request_id=<id> [job=<n>] key=value ...`.
-Values go through a strict allow-list pattern, so free text (CV content, job
-descriptions, queries, full URLs, exception messages) can never be written by
-accident: anything that is not a short identifier or a number is replaced.
+Every line is `event=<name> request_id=<id> key=value ...`. Values go through a strict
+allow-list pattern, so free text (CV content, job descriptions, full URLs, exception
+messages) can never be written by accident: anything that is not a short identifier or a
+number is replaced.
 """
 
 import logging
@@ -29,10 +29,6 @@ def _format_value(value: object) -> str:
 def log_event(logger: logging.Logger, level: int, event: str, **fields: object) -> None:
     request_id = request_id_var.get()
     parts = [f"event={event}", f"request_id={request_id}"]
-
-    job = fields.pop("job", None)
-    if job is not None:
-        parts.append(f"job={_format_value(job)}")
 
     parts.extend(f"{key}={_format_value(value)}" for key, value in fields.items() if value is not None)
     logger.log(level, " ".join(parts), extra={"request_id": request_id, "event": event})

@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import { applyDecisions } from "./api";
+import { applyDecisions, type AnalyzeOptions } from "./api";
 import {
-  AUTO_FOCUS, type AdditionTarget, type CoachDraft, type CoachResult, type FoundJob, type JobCoach,
-  type StructuredCV,
+  AUTO_FOCUS, type Analysis, type AdditionTarget, type CoachDraft, type CoachResult, type StructuredCV,
 } from "./types";
 
 /** What the user can do with a suggestion or a question card. */
@@ -59,45 +58,47 @@ export function nextDraft(draft: CoachDraft, action: DraftAction): CoachDraft {
 const hasWork = (draft: CoachDraft) =>
   Object.keys(draft.decisions).length + Object.keys(draft.additions).length > 0;
 
-const blank = (): JobCoach => ({
+const failure = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
+
+const working = (options: AnalyzeOptions): Analysis => ({
+  posting: options.posting, domain: options.domain, careerGoal: options.careerGoal,
   status: "working", message: null, choice: null, focus: null, results: {}, drafts: {},
 });
 
-type Analyze = (cv: StructuredCV, job: FoundJob, focus: string) => Promise<CoachResult>;
+type Analyze = (cv: StructuredCV, options: AnalyzeOptions, focus: string) => Promise<CoachResult>;
 
 /**
- * Per-job coaching state: the analysis (one model call per job and focus, then reused),
- * and the user's decisions. Deciding, undoing and downloading never reach the model: the
- * accepted decisions go to a deterministic endpoint that returns the draft CV.
- * The main CV is only ever an input.
+ * The analysis of one posting: one model call per focus, then reused, and the user's decisions.
+ * Deciding, undoing and downloading never reach the model: the accepted decisions go to a
+ * deterministic endpoint that returns the draft CV. The main CV is only ever an input.
  */
-export function useCoachStore(mainCv: StructuredCV | null, analyze?: Analyze) {
-  const [coach, setCoach] = useState<Record<string, JobCoach>>({});
-  const latest = useRef(coach);
+export function useAnalysisStore(mainCv: StructuredCV | null, analyze?: Analyze) {
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const latest = useRef(analysis);
   const cvRef = useRef(mainCv);
   cvRef.current = mainCv;
-  const generation = useRef(0); // bumped when the CV changes: older answers are dropped
+  const generation = useRef(0); // bumped when the analysis restarts: older answers are dropped
   const applySeq = useRef<Record<string, number>>({});
 
-  const update = useCallback((fn: (all: Record<string, JobCoach>) => Record<string, JobCoach>) => {
+  const update = useCallback((fn: (current: Analysis | null) => Analysis | null) => {
     latest.current = fn(latest.current);
-    setCoach(latest.current);
+    setAnalysis(latest.current);
   }, []);
   const patch = useCallback(
-    (jobId: string, fn: (c: JobCoach) => JobCoach) =>
-      update((all) => ({ ...all, [jobId]: fn(all[jobId] ?? blank()) })),
+    (fn: (current: Analysis) => Analysis) => update((current) => (current ? fn(current) : current)),
     [update],
   );
 
+  /** Drop the analysis and every answer still on its way. */
   const reset = useCallback(() => {
     generation.current += 1;
     applySeq.current = {};
-    update(() => ({}));
+    update(() => null);
   }, [update]);
 
   const show = useCallback(
-    (jobId: string, focus: string, result: CoachResult) =>
-      patch(jobId, (c) => ({
+    (focus: string, result: CoachResult) =>
+      patch((c) => ({
         ...c, status: "ready", message: null, focus,
         results: { ...c.results, [focus]: result },
         drafts: { ...c.drafts, [focus]: c.drafts[focus] ?? emptyDraft() },
@@ -105,56 +106,59 @@ export function useCoachStore(mainCv: StructuredCV | null, analyze?: Analyze) {
     [patch],
   );
 
-  /** Ready-made suggestions (the demo); no analysis is asked for. */
+  /** Ready-made suggestions (the demo): no analysis is asked for. */
   const seed = useCallback(
-    (job: FoundJob, result: CoachResult) => {
-      if (!latest.current[job.id]) show(job.id, AUTO_FOCUS, result);
+    (options: AnalyzeOptions, result: CoachResult) => {
+      reset();
+      update(() => ({
+        ...working(options), status: "ready", focus: AUTO_FOCUS,
+        results: { [AUTO_FOCUS]: result }, drafts: { [AUTO_FOCUS]: emptyDraft() },
+      }));
     },
-    [show],
+    [reset, update],
   );
 
   const start = useCallback(
-    async (job: FoundJob) => {
-      const existing = latest.current[job.id];
+    async (options: AnalyzeOptions) => {
       const cv = cvRef.current;
-      if ((existing && existing.status !== "error") || !cv || !analyze) return; // cached or running
+      if (!cv || !analyze) return;
+      reset();
       const gen = generation.current;
-      patch(job.id, () => blank());
+      update(() => working(options));
       try {
-        const result = await analyze(cv, job, "");
+        const result = await analyze(cv, options, "");
         if (gen !== generation.current) return;
         if (result.kind === "suggestions") {
-          show(job.id, AUTO_FOCUS, result);
+          show(AUTO_FOCUS, result);
         } else {
-          patch(job.id, (c) => ({ ...c, status: "choose", choice: result, message: null }));
+          patch((c) => ({ ...c, status: "choose", choice: result, message: null }));
         }
       } catch (err) {
         if (gen !== generation.current) return;
-        patch(job.id, (c) => ({ ...c, status: "error", message: err instanceof Error ? err.message : "The analysis failed." }));
+        patch((c) => ({ ...c, status: "error", message: failure(err, "The analysis failed.") }));
       }
     },
-    [analyze, patch, show],
+    [analyze, patch, reset, show, update],
   );
 
   const choose = useCallback(
-    async (job: FoundJob, name: string) => {
-      const current = latest.current[job.id];
+    async (name: string) => {
+      const current = latest.current;
       const cv = cvRef.current;
       if (!current || current.status === "working" || !cv || !analyze) return;
       if (current.results[name]) {
-        patch(job.id, (c) => ({ ...c, status: "ready", focus: name, message: null })); // reused
+        patch((c) => ({ ...c, status: "ready", focus: name, message: null })); // reused, never asked again
         return;
       }
       const gen = generation.current;
-      patch(job.id, (c) => ({ ...c, status: "working", message: null }));
+      patch((c) => ({ ...c, status: "working", message: null }));
       try {
-        const result = await analyze(cv, job, name);
-        if (gen === generation.current) show(job.id, name, result);
+        const result = await analyze(cv, current, name);
+        if (gen === generation.current) show(name, result);
       } catch (err) {
         if (gen !== generation.current) return;
-        patch(job.id, (c) => ({
-          ...c, status: c.choice ? "choose" : "error",
-          message: err instanceof Error ? err.message : "The analysis failed.",
+        patch((c) => ({
+          ...c, status: c.choice ? "choose" : "error", message: failure(err, "The analysis failed."),
         }));
       }
     },
@@ -162,45 +166,45 @@ export function useCoachStore(mainCv: StructuredCV | null, analyze?: Analyze) {
   );
 
   const changeFocus = useCallback(
-    (job: FoundJob) => patch(job.id, (c) => (c.choice ? { ...c, status: "choose", message: null } : c)),
+    () => patch((c) => (c.choice ? { ...c, status: "choose", message: null } : c)),
     [patch],
   );
 
   const decide = useCallback(
-    async (job: FoundJob, action: DraftAction) => {
-      const current = latest.current[job.id];
+    async (action: DraftAction) => {
+      const current = latest.current;
       const cv = cvRef.current;
       const key = current?.focus;
       if (!current || key == null || !cv) return;
       const result = current.results[key];
       const draft = nextDraft(current.drafts[key] ?? emptyDraft(), action);
       const work = hasWork(draft);
-      patch(job.id, (c) => ({
+      patch((c) => ({
         ...c,
         drafts: { ...c.drafts, [key]: { ...draft, applied: work ? draft.applied : null, applying: work, error: null } },
       }));
       if (!work) return;
-      const token = (applySeq.current[`${job.id}/${key}`] = (applySeq.current[`${job.id}/${key}`] ?? 0) + 1);
+      const token = (applySeq.current[key] = (applySeq.current[key] ?? 0) + 1);
       const gen = generation.current;
       try {
         const applied = await applyDecisions({
           cv, suggestions: result.suggestions, decisions: draft.decisions,
-          additions: Object.values(draft.additions), job_description: job.job_description,
+          additions: Object.values(draft.additions), job_description: current.posting.description,
         });
-        if (applySeq.current[`${job.id}/${key}`] !== token || gen !== generation.current) return;
-        patch(job.id, (c) => ({ ...c, drafts: { ...c.drafts, [key]: { ...c.drafts[key], applied, applying: false, error: null } } }));
+        if (applySeq.current[key] !== token || gen !== generation.current) return;
+        patch((c) => ({ ...c, drafts: { ...c.drafts, [key]: { ...c.drafts[key], applied, applying: false, error: null } } }));
       } catch (err) {
-        if (applySeq.current[`${job.id}/${key}`] !== token) return;
-        patch(job.id, (c) => ({
+        if (applySeq.current[key] !== token || gen !== generation.current) return;
+        patch((c) => ({
           ...c,
-          drafts: { ...c.drafts, [key]: { ...c.drafts[key], applying: false, error: err instanceof Error ? err.message : "Could not apply your decision." } },
+          drafts: { ...c.drafts, [key]: { ...c.drafts[key], applying: false, error: failure(err, "Could not apply your decision.") } },
         }));
       }
     },
     [patch],
   );
 
-  return { coach, start, choose, changeFocus, decide, seed, reset };
+  return { analysis, start, choose, changeFocus, decide, seed, reset };
 }
 
-export type CoachStore = ReturnType<typeof useCoachStore>;
+export type AnalysisStore = ReturnType<typeof useAnalysisStore>;

@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { MY_CV, fakeApi, json, renderApp, setMobile } from "./test-utils";
+import { MY_CV, fakeApi, json, renderApp, submitPosting } from "./test-utils";
 
 let api: ReturnType<typeof fakeApi>;
 type User = ReturnType<typeof userEvent.setup>;
@@ -10,10 +10,7 @@ beforeEach(() => {
   api = fakeApi();
   vi.stubGlobal("fetch", api.fetchMock);
 });
-afterEach(() => {
-  vi.unstubAllGlobals();
-  setMobile(false);
-});
+afterEach(() => vi.unstubAllGlobals());
 
 const WARNINGS = [
   "exp1: employer is empty; please fill it in.",
@@ -24,7 +21,7 @@ const WARNINGS = [
 
 async function toReviewScreen(user: User, warnings: string[] = WARNINGS) {
   api.once("/v1/cv/parse", () => json({ cv: MY_CV, warnings }));
-  renderApp("/cv");
+  renderApp("/");
   await user.upload(screen.getByLabelText(/Upload your CV/), new File(["x"], "my-cv.txt", { type: "text/plain" }));
   await user.click(await screen.findByRole("button", { name: "Analyze my CV" }));
   await screen.findByRole("heading", { name: "Confirm your CV" });
@@ -109,7 +106,7 @@ test("contact, skills and languages are edited as comma separated lists", async 
   expect(within(section("Skills and languages")).getByText(/Turkish, English/)).toBeInTheDocument();
 });
 
-test("the confirmed CV is the edited one: tailoring uses it, and editing never calls a model", async () => {
+test("the confirmed CV is the edited one: the analysis uses it, and editing never calls a model", async () => {
   const user = userEvent.setup();
   await toReviewScreen(user);
 
@@ -122,10 +119,7 @@ test("the confirmed CV is the edited one: tailoring uses it, and editing never c
   await user.click(form.getByRole("button", { name: "Save" }));
   await user.click(screen.getByRole("button", { name: "Confirm CV" }));
 
-  await user.type(screen.getByLabelText("Role or keyword"), "AI Engineer");
-  await user.type(screen.getByLabelText("City or remote"), "Berlin");
-  await user.click(screen.getByRole("button", { name: "Search jobs" }));
-  await user.click(await screen.findByRole("button", { name: "Tailor my CV" }));
+  await submitPosting(user);
   await screen.findByRole("heading", { name: "Suggestions for this application" });
 
   const sent = api.body("/v1/coach/analyze").cv;

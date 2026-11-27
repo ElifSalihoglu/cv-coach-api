@@ -21,18 +21,8 @@ export interface StructuredCV {
   languages: string[];
 }
 
-/** A job posting from POST /v1/jobs/search (or a demo job). */
-export interface FoundJob {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  /** Link to the original posting; empty for demo jobs. */
-  source_url: string;
-  job_description: string;
-  /** "missing_description" when the posting text could not be read. */
-  status: "ready" | "missing_description";
-}
+/** The job posting the user pastes, with an optional company for the PDF file name. */
+export interface Posting { title: string; description: string; company: string }
 
 /** What the PDF endpoint needs: the CV to print and the job it was made for. */
 export interface PdfSource { cv: StructuredCV; company: string; title: string }
@@ -50,7 +40,7 @@ export interface CvChange {
   suggestion_id?: string;
 }
 
-// ---- IT Career Coach (mirrors app/models/coaching.py) ----
+// ---- Career coach (mirrors app/models/coaching.py and the orchestration records) ----
 
 export type Level = "required" | "preferred";
 
@@ -76,6 +66,21 @@ export interface Suggestion {
 
 export interface Question { id: string; requirement: string; level: Level; term: string; text: string }
 
+export interface RoutingDecision {
+  primary: string; // agent id
+  method: "override" | "rules" | "fallback";
+  confidence: "high" | "low";
+  reasons: string[]; // codes such as "title_cue:software engineer" or "agent_failed:it"
+}
+export interface AgentRun { agent_id: string; status: "ok" | "failed"; duration_ms: number; error_code: string }
+
+/** Which agent answered and why, as reported by the API. */
+export interface CoachMeta {
+  routing: RoutingDecision;
+  runs: AgentRun[];
+  provenance: Record<string, string>; // suggestion, question or track id -> agent id
+}
+
 export interface CoachResult {
   kind: "suggestions" | "choose_focus";
   focus: string;
@@ -84,7 +89,9 @@ export interface CoachResult {
   tracks: FocusOption[];
   suggestions: Suggestion[];
   questions: Question[];
-  dropped: number;
+  dropped: number; // model proposals our checks removed
+  dropped_reasons: Record<string, number>; // why, as codes
+  meta: CoachMeta | null;
 }
 
 export interface Claim { kind: "numbers" | "seniority" | "skills"; terms: string[] }
@@ -109,7 +116,11 @@ export interface CoachDraft {
   error: string | null;
 }
 
-export interface JobCoach {
+/** The analysis of one posting: the answers so far and the user's draft for each focus. */
+export interface Analysis {
+  posting: Posting;
+  domain: string; // "" = automatic
+  careerGoal: string;
   status: "working" | "choose" | "ready" | "error";
   message: string | null;
   choice: CoachResult | null; // the tracks to choose from, if the posting had several

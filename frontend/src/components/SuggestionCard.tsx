@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { checkText, errorMessage } from "../api";
-import type { DraftAction } from "../coachStore";
+import type { DraftAction } from "../analysisStore";
 import { diffWords } from "../diff";
-import type { Claim, Decision, FoundJob, StructuredCV, Suggestion } from "../types";
+import type { Claim, Decision, StructuredCV, Suggestion } from "../types";
 import { Words } from "./Words";
 
 const KIND_LABEL: Record<Suggestion["kind"], string> = {
@@ -15,7 +15,7 @@ interface Props {
   suggestion: Suggestion;
   decision: Decision | undefined;
   rejected: boolean;
-  job: FoundJob;
+  jobDescription: string;
   mainCv: StructuredCV;
   onAction: (action: DraftAction) => void;
 }
@@ -23,7 +23,7 @@ interface Props {
 type Mode = "idle" | "editing" | "confirm";
 
 /** One proposal with the evidence behind it, and the user's three choices. */
-export function SuggestionCard({ suggestion: s, decision, rejected, job, mainCv, onAction }: Props) {
+export function SuggestionCard({ suggestion: s, decision, rejected, jobDescription, mainCv, onAction }: Props) {
   const [mode, setMode] = useState<Mode>("idle");
   const [text, setText] = useState(s.after);
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -40,7 +40,7 @@ export function SuggestionCard({ suggestion: s, decision, rejected, job, mainCv,
     setBusy(true);
     try {
       const result = await checkText({
-        cv: mainCv, job_description: job.job_description,
+        cv: mainCv, job_description: jobDescription,
         kind: s.kind === "rewrite" ? "rewrite" : "summary",
         source_id: s.kind === "rewrite" ? source.id : undefined, text,
       });

@@ -74,55 +74,38 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 .status-ready, .ready-mark { color: #1a7f37; font-weight: 700; margin: 0 0 8px; }
 .hint { color: var(--muted); font-size: .9rem; margin: 8px 0 0; }
 
-/* ---- search page ---- */
-.search-section {
-  display: grid; grid-template-columns: 1fr 260px; gap: 20px; align-items: start;
-  padding: 24px; margin-bottom: 24px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 14px;
+/* ---- posting and analysis ---- */
+.posting-form { display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin-top: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field small { font-weight: 400; }
+.field.narrow { max-width: 320px; }
+.field select {
+  font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
 }
-.search-main h1 { margin: 0; font-size: 1.8rem; }
-.search-form { display: grid; grid-template-columns: 1.6fr 1.2fr auto; gap: 12px; align-items: end; }
-.search-form button.primary { height: 44px; padding-inline: 22px; white-space: nowrap; }
-.cv-card { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
-.cv-card h2 { margin: 0 0 6px; font-size: 1rem; }
-.cv-card p { margin: 0 0 10px; }
-.cv-card-file { font-weight: 600; overflow-wrap: anywhere; color: #1a7f37; }
-
-.results-section h2 {
-  font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
-  margin: 0 0 8px;
-}
-
-/* ---- results: list + details ---- */
-.browser { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; margin-top: 8px; }
-.job-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.job-card {
-  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 14px 16px;
-}
-.job-card.is-selected {
-  border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent);
-}
-.job-title { font-weight: 700; }
-.job-company { font-size: .95rem; }
-.job-location { font-size: .85rem; color: var(--muted); }
-.job-flag { font-size: .75rem; font-weight: 700; color: #1a7f37; margin-top: 4px; }
-
-.detail-pane { margin-top: 8px; }
-.detail {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px;
-}
-.detail-head h3 { margin: 0; font-size: 1.35rem; }
-.detail-head p { margin: 2px 0 6px; }
-.cv-action { margin: 16px 0; padding: 14px 16px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
-.button-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.detail h4 { margin: 0 0 8px; font-size: 1rem; }
-.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
-.back { margin-bottom: 10px; }
-.notes { margin: 12px 0 0; }
-.notes summary { cursor: pointer; color: var(--muted); }
+.confirmed-cv { margin: 0 0 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.confirmed-cv summary { cursor: pointer; }
+.analysis { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+.analysis-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.analysis-head h2 { margin: 0; font-size: 1.35rem; }
+.analysis-head p { margin: 2px 0 0; }
+.analysis h3 { margin: 22px 0 8px; font-size: 1.05rem; }
+.agent-panel { margin: 14px 0; padding: 12px 14px; border-radius: 10px; background: var(--accent-soft); border: 1px solid var(--border); }
+.agent-line { margin: 0 0 6px; }
+.agent-line:last-of-type { margin-bottom: 0; }
+.agent-checks { margin-top: 8px; }
+.agent-checks summary { cursor: pointer; color: var(--muted); }
+.agent-checks ul { margin: 6px 0 0; padding-left: 20px; }
+.posting-text { margin-top: 22px; }
+.posting-text summary { cursor: pointer; font-weight: 600; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin-top: 8px; }
+.button-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.scenario-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 16px; }
+.scenario-tabs button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
 
 /* ---- CV pages ---- */
 .step { max-width: 1000px; margin: 0 auto; }
+.step.wide { max-width: 1000px; }
 .step h1, .page-title h1 { margin: 0 0 6px; font-size: 1.5rem; }
 .page-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .steps { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 16px; font-size: .85rem; color: var(--muted); }
@@ -162,11 +145,8 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 
 @media (max-width: 800px) {
   .app { padding: 12px; }
-  .search-section { grid-template-columns: 1fr; padding: 16px; }
-  .search-form { grid-template-columns: 1fr; }
-  .search-form button.primary { width: 100%; }
-  .browser { grid-template-columns: 1fr; }
-  .detail { padding: 16px; }
+  .form-row { grid-template-columns: 1fr; }
+  .analysis { padding: 16px; }
   .button-row button { flex: 1; }
   .cv-sheet { padding: 20px 16px; }
 }
@@ -213,7 +193,6 @@ button:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visibl
 .bullet-edit button { margin-top: 26px; }
 
 /* ---- coach: focus, suggestions, questions ---- */
-.coach-ready h4 { margin: 18px 0 8px; font-size: 1rem; }
 .coach-focus { margin: 0 0 8px; }
 .posting-summary { margin: 8px 0 12px; }
 .posting-summary summary { cursor: pointer; font-weight: 600; }

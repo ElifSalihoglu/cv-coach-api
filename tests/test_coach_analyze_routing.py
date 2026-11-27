@@ -49,7 +49,6 @@ def test_a_posting_outside_it_is_answered_by_the_general_agent(monkeypatch, clie
     body = client.post("/v1/coach/analyze", json=NURSE_BODY).json()
     assert body["meta"]["routing"] == {
         "primary": "general",
-        "secondary": [],
         "method": "fallback",
         "confidence": "low",
         "reasons": ["no_clear_match"],

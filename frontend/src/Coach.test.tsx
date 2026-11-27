@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
-  PROMOTE, REWRITE, RICH_CV, SUMMARY, coachResult, fakeApi, json, renderApp, trackChoice,
+  PROMOTE, REWRITE, RICH_CV, SUMMARY, coachResult, confirmCv, fakeApi, json, renderApp, submitPosting, trackChoice,
 } from "./test-utils";
 
 let api: ReturnType<typeof fakeApi>;
@@ -17,16 +17,11 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-/** Upload, confirm, search and ask for suggestions for the first job. */
+/** Upload and confirm a CV, then submit a posting and wait for the analysis. */
 async function openSuggestions(user: User) {
-  renderApp("/cv");
-  await user.upload(screen.getByLabelText(/Upload your CV/), new File(["x"], "my-cv.txt", { type: "text/plain" }));
-  await user.click(await screen.findByRole("button", { name: "Analyze my CV" }));
-  await user.click(await screen.findByRole("button", { name: "Confirm CV" }));
-  await user.type(screen.getByLabelText("Role or keyword"), "AI Engineer");
-  await user.type(screen.getByLabelText("City or remote"), "Berlin");
-  await user.click(screen.getByRole("button", { name: "Search jobs" }));
-  await user.click(await screen.findByRole("button", { name: "Tailor my CV" }));
+  renderApp("/");
+  await confirmCv(user);
+  await submitPosting(user);
 }
 
 const card = (name: RegExp | string) => screen.getByRole("article", { name });

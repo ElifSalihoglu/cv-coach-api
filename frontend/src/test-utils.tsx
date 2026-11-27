@@ -2,9 +2,9 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
-import type {
-  CoachResult, CvChange, FoundJob, StructuredCV, Suggestion,
-} from "./types";
+import userEvent from "@testing-library/user-event";
+import { screen } from "@testing-library/react";
+import type { CoachMeta, CoachResult, CvChange, StructuredCV, Suggestion } from "./types";
 
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -31,15 +31,13 @@ export const RICH_CV: StructuredCV = {
   ] }],
 };
 
-export const JOB_A: FoundJob = {
-  id: "indeed:aaa", title: "AI Engineer", company: "Acme", location: "Berlin",
-  source_url: "https://de.indeed.com/viewjob?jk=aaa", status: "ready",
-  job_description: "Acme builds agents.\nYou will ship LLM features.",
-};
-export const JOB_B: FoundJob = {
-  id: "indeed:bbb", title: "ML Engineer", company: "Beta", location: "Remote",
-  source_url: "https://de.indeed.com/viewjob?jk=bbb", status: "ready",
-  job_description: "Beta trains ranking models.",
+export const POSTING_TEXT = "Acme builds agents. You will ship LLM features.";
+
+/** The routing the API reports for an IT posting matched by rules. */
+export const IT_META: CoachMeta = {
+  routing: { primary: "it", method: "rules", confidence: "high", reasons: ["title_cue:ai"] },
+  runs: [{ agent_id: "it", status: "ok", duration_ms: 12, error_code: "" }],
+  provenance: {},
 };
 
 // ---- canned coach answers for RICH_CV ----
@@ -74,7 +72,7 @@ export const coachResult = (over: Partial<CoachResult> = {}): CoachResult => ({
   tracks: [], suggestions: [PROMOTE, SUMMARY, REWRITE],
   questions: [{ id: "ask:kubernetes", requirement: "Kubernetes is a plus", level: "preferred", term: "Kubernetes",
     text: "The posting prefers Kubernetes. Your CV doesn't mention it. Have you used it?" }],
-  dropped: 0, ...over,
+  dropped: 0, dropped_reasons: {}, meta: IT_META, ...over,
 });
 
 export const trackChoice = (): CoachResult => ({
@@ -136,7 +134,6 @@ export function fakeApi(options: { cv?: StructuredCV } = {}) {
   const defaults: Record<string, (body: any) => Response> = {
     "/v1/cv/extract-text": () => json({ filename: "cv.txt", text: "Kerem Aydın\nBackend developer" }),
     "/v1/cv/parse": () => json({ cv: options.cv ?? MY_CV, warnings: [] }),
-    "/v1/jobs/search": () => json({ jobs: [JOB_A, JOB_B] }),
     "/v1/coach/analyze": () => json(coachResult()),
     "/v1/coach/apply": (body) => json(fakeApply(body)),
     "/v1/coach/check": (body) =>
@@ -166,13 +163,24 @@ export function fakeApi(options: { cv?: StructuredCV } = {}) {
   };
 }
 
-export function setMobile(mobile: boolean) {
-  if (!mobile) {
-    // @ts-expect-error jsdom has no matchMedia; removing it means "desktop"
-    delete window.matchMedia;
-    return;
-  }
-  window.matchMedia = ((query: string) => ({
-    matches: true, media: query, addEventListener() {}, removeEventListener() {},
-  })) as unknown as typeof window.matchMedia;
+type User = ReturnType<typeof userEvent.setup>;
+
+/** Upload a file, analyze the text and confirm the structured CV: the CV is ready for a posting. */
+export async function confirmCv(user: User) {
+  await user.upload(screen.getByLabelText(/Upload your CV/), new File(["x"], "my-cv.txt", { type: "text/plain" }));
+  await user.click(await screen.findByRole("button", { name: "Analyze my CV" }));
+  await user.click(await screen.findByRole("button", { name: "Confirm CV" }));
+}
+
+/** Fill the posting form and submit it. */
+export async function submitPosting(
+  user: User,
+  fields: { title?: string; text?: string; goal?: string; company?: string; agent?: string } = {},
+) {
+  await user.type(screen.getByLabelText("Job title"), fields.title ?? "AI Engineer");
+  await user.type(screen.getByLabelText("Job posting"), fields.text ?? POSTING_TEXT);
+  if (fields.goal) await user.type(screen.getByLabelText(/Career goal/), fields.goal);
+  if (fields.company) await user.type(screen.getByLabelText(/Company/), fields.company);
+  if (fields.agent) await user.selectOptions(screen.getByLabelText(/^Agent/), fields.agent);
+  await user.click(screen.getByRole("button", { name: "Analyze posting" }));
 }

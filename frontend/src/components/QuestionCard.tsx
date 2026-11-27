@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { checkText, errorMessage } from "../api";
-import type { DraftAction } from "../coachStore";
-import type { Addition, Claim, FoundJob, Question, StructuredCV } from "../types";
+import type { DraftAction } from "../analysisStore";
+import type { Addition, Claim, Question, StructuredCV } from "../types";
 
 interface Props {
   question: Question;
   addition: Addition | undefined;
   declined: boolean;
-  job: FoundJob;
+  jobDescription: string;
   mainCv: StructuredCV;
   onAction: (action: DraftAction) => void;
 }
@@ -30,7 +30,7 @@ function places(cv: StructuredCV) {
  * Nothing is added until the user answers; the answer is their own wording, and the
  * user says which role or project it belongs to.
  */
-export function QuestionCard({ question: q, addition, declined, job, mainCv, onAction }: Props) {
+export function QuestionCard({ question: q, addition, declined, jobDescription, mainCv, onAction }: Props) {
   const options = places(mainCv);
   const [mode, setMode] = useState<Mode>("idle");
   const [text, setText] = useState("");
@@ -53,7 +53,7 @@ export function QuestionCard({ question: q, addition, declined, job, mainCv, onA
     setProblem(null);
     setBusy(true);
     try {
-      const result = await checkText({ cv: mainCv, job_description: job.job_description, kind: "add", text });
+      const result = await checkText({ cv: mainCv, job_description: jobDescription, kind: "add", text });
       if (result.claims.length === 0) {
         add([]);
       } else {

@@ -1,48 +1,29 @@
 import type {
-  Addition, AppliedCv, Claim, CoachResult, Decision, FoundJob, PdfSource, StructuredCV, Suggestion,
+  Addition, AppliedCv, Claim, CoachResult, Decision, PdfSource, Posting, StructuredCV, Suggestion,
 } from "./types";
 
 export interface PdfDownload { blob: Blob; filename: string }
 
-/** An API failure with a message that is safe to show, and the API's error code if any. */
-export class ApiError extends Error {
-  code: string | null;
-  status: number;
-  constructor(message: string, code: string | null, status: number) {
-    super(message);
-    this.code = code;
-    this.status = status;
-  }
-}
+/** An API failure with a message that is safe to show. */
+export class ApiError extends Error {}
 
 const NETWORK_MESSAGE = "Could not reach the API. Check that it is running and try again.";
-
-/** English text for errors the API reports with a code (its own text may be in another language). */
-const CODE_MESSAGES: Record<string, string> = {
-  human_verification:
-    "Indeed asked for a human verification, so the search stopped. Open Indeed in your browser, complete the check, then search again.",
-  search_timeout: "The job search timed out before results loaded. Please try again.",
-};
 
 async function request(input: string, init?: RequestInit): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(input, init);
   } catch {
-    throw new ApiError(NETWORK_MESSAGE, "network", 0);
+    throw new ApiError(NETWORK_MESSAGE);
   }
   if (response.ok) return response;
   let detail: unknown = null;
   try { detail = (await response.json())?.detail; } catch { /* not JSON */ }
   if (detail && typeof detail === "object" && !Array.isArray(detail) && "message" in detail) {
-    const d = detail as { message: string; code?: string };
-    const code = d.code ?? null;
-    throw new ApiError((code && CODE_MESSAGES[code]) || d.message, code, response.status);
+    throw new ApiError((detail as { message: string }).message);
   }
-  if (typeof detail === "string" && detail) {
-    throw new ApiError(detail, null, response.status);
-  }
-  throw new ApiError(`The API returned an error (${response.status}).`, null, response.status);
+  if (typeof detail === "string" && detail) throw new ApiError(detail);
+  throw new ApiError(`The API returned an error (${response.status}).`);
 }
 
 export function errorMessage(err: unknown, fallback: string): string {
@@ -104,25 +85,25 @@ export async function parseCv(cvText: string): Promise<ParsedCv> {
   return { cv: body.cv, warnings: body.warnings ?? [] };
 }
 
-export interface SearchParams { query: string; city: string }
-
-/** Find jobs and their descriptions. No CV and no model are involved. */
-export async function searchJobs(params: SearchParams): Promise<FoundJob[]> {
-  const response = await request("/v1/jobs/search", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  return (await response.json()).jobs as FoundJob[];
+export interface AnalyzeOptions {
+  posting: Posting;
+  /** An agent id to force; "" lets the API choose. */
+  domain: string;
+  /** The position the user is aiming at; helps the API choose an agent. */
+  careerGoal: string;
 }
 
 /** One model call: read the posting against the confirmed CV. Without a focus the answer
  *  is either suggestions (a clear posting) or the tracks to choose from. */
-export async function analyzeJob(cv: StructuredCV, job: FoundJob, focus: string): Promise<CoachResult> {
+export async function analyzePosting(cv: StructuredCV, options: AnalyzeOptions, focus: string): Promise<CoachResult> {
+  const { posting, domain, careerGoal } = options;
   const response = await request("/v1/coach/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cv, job_title: job.title, job_description: job.job_description, focus }),
+    body: JSON.stringify({
+      cv, job_title: posting.title, job_description: posting.description, focus,
+      domain, career_goal: careerGoal,
+    }),
   });
   return (await response.json()) as CoachResult;
 }

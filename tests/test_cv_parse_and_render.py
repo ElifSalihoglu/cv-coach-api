@@ -220,3 +220,11 @@ def test_long_cv_breaks_pages_and_keeps_every_bullet():
 
     assert len(reader.pages) >= 2
     assert all(f"Madde {i}:" in text for i in range(1, 41))
+
+
+def test_the_pdf_prints_the_sections_in_the_order_the_ui_preview_shows_them():
+    # frontend/src/CvPreview.test.tsx checks the same order on the preview side
+    text = _flat_pdf_text(assign_ids(PARSED))
+    headings = ["SUMMARY", "EXPERIENCE", "PROJECTS", "EDUCATION", "CERTIFICATIONS", "SKILLS", "LANGUAGES"]
+    positions = [text.index(h) for h in headings]
+    assert positions == sorted(positions)

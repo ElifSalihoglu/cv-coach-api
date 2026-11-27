@@ -1,9 +1,7 @@
-import {
-  createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode,
-} from "react";
-import { ApiError, analyzeJob, errorMessage, searchJobs, type ParsedCv } from "./api";
-import { useCoachStore, type CoachStore } from "./coachStore";
-import type { FoundJob, StructuredCV } from "./types";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { analyzePosting, type ParsedCv } from "./api";
+import { useAnalysisStore, type AnalysisStore } from "./analysisStore";
+import type { StructuredCV } from "./types";
 
 /** The analysed CV while the user reviews it: the user's edits live here, not in the API result. */
 export interface ParsedDraft extends ParsedCv {
@@ -19,49 +17,12 @@ export interface CvSession {
   confirmedCv: StructuredCV | null;
 }
 
-export type SearchRun =
-  | { status: "idle" }
-  | { status: "searching" }
-  | { status: "error"; message: string; code: string | null }
-  | { status: "done" };
-
-export interface SearchSession {
-  query: string;
-  location: string;
-  /** The query that produced `jobs` (the form may have been edited since). */
-  searched: { query: string; location: string } | null;
-  run: SearchRun;
-  jobs: FoundJob[];
-}
-
-/**
- * Everything the user has done in this browser session. Kept in memory only:
- * a reload starts over and nothing is written to disk. Search results, the
- * confirmed CV and every job's coaching (analysis and decisions) survive moving
- * between pages, so browsing jobs never repeats a search or a model call.
- * Coaching belongs to the confirmed CV: a new CV starts it over.
- */
-export interface Session {
-  cv: CvSession;
-  search: SearchSession;
-  /** Job the user asked to tailor before having a confirmed CV. */
-  pendingTailorJobId: string | null;
-}
-
 const EMPTY_CV: CvSession = { fileName: null, text: null, parsed: null, confirmedCv: null };
 
-const INITIAL: Session = {
-  cv: EMPTY_CV,
-  search: { query: "", location: "", searched: null, run: { status: "idle" }, jobs: [] },
-  pendingTailorJobId: null,
-};
-
 interface Ctx {
-  session: Session;
-  /** Per-job coaching: analysis results, focus and the user's decisions. */
-  coach: CoachStore;
-  setSearchForm: (patch: Partial<Pick<SearchSession, "query" | "location">>) => void;
-  runSearch: () => Promise<void>;
+  cv: CvSession;
+  /** The analysis of the current posting and the user's decisions on it. */
+  analysis: AnalysisStore;
   startCv: (fileName: string, text: string) => void;
   setCvText: (text: string) => void;
   setParsed: (parsed: ParsedCv | null) => void;
@@ -69,87 +30,52 @@ interface Ctx {
   saveParsedEdit: (cv: StructuredCV, section: string) => void;
   confirmCv: (cv: StructuredCV) => void;
   resetCv: () => void;
-  setPendingTailor: (jobId: string | null) => void;
 }
 
 const SessionContext = createContext<Ctx | null>(null);
 
+/**
+ * Everything the user has done in this browser session, in memory only: a reload starts over and
+ * nothing is written to disk. The analysis belongs to the confirmed CV: a new CV starts it over.
+ */
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session>(INITIAL);
-  const latest = useRef(session);
-  latest.current = session;
-  const coach = useCoachStore(session.cv.confirmedCv, analyzeJob);
-  const resetCoach = coach.reset;
-
-  const setSearch = useCallback(
-    (patch: Partial<SearchSession>) =>
-      setSession((s) => ({ ...s, search: { ...s.search, ...patch } })),
-    [],
-  );
-  const setCv = useCallback(
-    (patch: Partial<CvSession>) => setSession((s) => ({ ...s, cv: { ...s.cv, ...patch } })),
-    [],
-  );
-
-  const runSearch = useCallback(async () => {
-    const { query, location, run } = latest.current.search;
-    if (run.status === "searching" || !query.trim() || !location.trim()) return;
-    const asked = { query: query.trim(), location: location.trim() };
-    setSearch({ run: { status: "searching" } });
-    try {
-      const jobs = await searchJobs({ query: asked.query, city: asked.location });
-      setSearch({ jobs, searched: asked, run: { status: "done" } });
-    } catch (err) {
-      // The CV and the coaching done so far are untouched; only this run failed.
-      setSearch({
-        run: {
-          status: "error",
-          message: errorMessage(err, "The job search failed."),
-          code: err instanceof ApiError ? err.code : null,
-        },
-      });
-    }
-  }, [setSearch]);
+  const [cv, setCvSession] = useState<CvSession>(EMPTY_CV);
+  const analysis = useAnalysisStore(cv.confirmedCv, analyzePosting);
+  const resetAnalysis = analysis.reset;
 
   const value = useMemo<Ctx>(
     () => ({
-      session,
-      coach,
-      setSearchForm: (patch) => setSearch(patch),
-      runSearch,
+      cv,
+      analysis,
       startCv: (fileName, text) => {
-        resetCoach(); // suggestions belong to the CV they were made from
-        setSession((s) => ({ ...s, cv: { fileName, text, parsed: null, confirmedCv: null } }));
+        resetAnalysis();
+        setCvSession({ fileName, text, parsed: null, confirmedCv: null });
       },
-      setCvText: (text) => setCv({ text }),
+      setCvText: (text) => setCvSession((s) => ({ ...s, text })),
       setParsed: (parsed) =>
-        setCv({ parsed: parsed ? { ...parsed, edited: false, reviewed: [] } : null }),
-      saveParsedEdit: (cv, section) =>
-        setSession((s) =>
-          s.cv.parsed
+        setCvSession((s) => ({ ...s, parsed: parsed ? { ...parsed, edited: false, reviewed: [] } : null })),
+      saveParsedEdit: (edited, section) =>
+        setCvSession((s) =>
+          s.parsed
             ? {
                 ...s,
-                cv: {
-                  ...s.cv,
-                  parsed: {
-                    ...s.cv.parsed, cv, edited: true,
-                    reviewed: [...new Set([...s.cv.parsed.reviewed, section])],
-                  },
+                parsed: {
+                  ...s.parsed, cv: edited, edited: true,
+                  reviewed: [...new Set([...s.parsed.reviewed, section])],
                 },
               }
             : s,
         ),
-      confirmCv: (cv) => {
-        resetCoach(); // a newly confirmed CV never inherits old suggestions
-        setCv({ confirmedCv: cv });
+      confirmCv: (confirmed) => {
+        resetAnalysis(); // a newly confirmed CV never inherits old suggestions
+        setCvSession((s) => ({ ...s, confirmedCv: confirmed }));
       },
       resetCv: () => {
-        resetCoach();
-        setSession((s) => ({ ...s, cv: EMPTY_CV, pendingTailorJobId: null }));
+        resetAnalysis();
+        setCvSession(EMPTY_CV);
       },
-      setPendingTailor: (jobId) => setSession((s) => ({ ...s, pendingTailorJobId: jobId })),
     }),
-    [session, coach, setSearch, setCv, runSearch, resetCoach],
+    [cv, analysis, resetAnalysis],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

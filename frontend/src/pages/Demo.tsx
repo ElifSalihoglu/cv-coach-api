@@ -1,55 +1,56 @@
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useCoachStore } from "../coachStore";
-import { JobBrowser } from "../components/JobBrowser";
-import { DEMO_JOBS, DEMO_MAIN_CV } from "../data/demo";
-import { MOBILE_QUERY, useMediaQuery } from "../hooks";
-import type { FoundJob } from "../types";
-
-const JOBS = DEMO_JOBS.map((d) => d.job);
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAnalysisStore } from "../analysisStore";
+import { AnalysisView } from "../components/AnalysisView";
+import { DEMO_SCENARIOS } from "../data/demo";
 
 /**
- * The sample results screen: synthetic jobs and a synthetic candidate. The suggestions are
- * ready-made, so no upload and no model call are involved; deciding works as in the real flow.
+ * The sample results screen: a synthetic candidate and posting with pre-recorded suggestions.
+ * No upload and no language model are involved; accepting, previewing and the PDF use the same
+ * deterministic API as the real flow.
  */
 export function Demo() {
-  const store = useCoachStore(DEMO_MAIN_CV);
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const mobile = useMediaQuery(MOBILE_QUERY);
+  const [scenarioId, setScenarioId] = useState(DEMO_SCENARIOS[0].id);
+  const scenario = DEMO_SCENARIOS.find((s) => s.id === scenarioId) ?? DEMO_SCENARIOS[0];
+  const store = useAnalysisStore(scenario.cv);
+  const { seed } = store;
 
-  function start(job: FoundJob) {
-    const demo = DEMO_JOBS.find((d) => d.job.id === job.id);
-    if (demo) store.seed(job, demo.result);
-  }
+  useEffect(() => {
+    seed({ posting: scenario.posting, domain: "", careerGoal: "" }, scenario.result);
+  }, [scenario, seed]);
 
   return (
-    <>
+    <section className="step wide">
       <div className="page-title">
         <h1>Demo</h1>
-        <span className="badge">Demo data</span>
-        <Link to="/" className="link-secondary">Search real jobs</Link>
+        <span className="badge">Sample data</span>
+        <Link to="/" className="link-secondary">Use my own CV</Link>
       </div>
-      <p className="muted">
-        Two sample jobs and a sample candidate. The suggestions are ready-made; you decide which ones go into the CV.
+      <p className="notice" role="note">
+        The analysis below is <strong>pre-recorded</strong>: no language model is called here. It shows
+        what the real flow returns for a synthetic CV and posting, including the proposals the checks removed.
+        Accepting suggestions and downloading the PDF use the real API (no model either), so it needs to be running.
       </p>
-      <section className="results-section" aria-label="Demo results">
-        <JobBrowser
-          jobs={JOBS}
-          selectedId={params.get("job")}
-          onSelect={(id) => setParams({ job: id }, { replace: !mobile, state: { fromList: true } })}
-          onBack={() => (location.state?.fromList ? navigate(-1) : setParams({}, { replace: true }))}
-          coach={{
-            hasCv: true,
-            mainCv: DEMO_MAIN_CV,
-            stateFor: (id) => store.coach[id],
-            start,
-            choose: (job, name) => void store.choose(job, name),
-            changeFocus: store.changeFocus,
-            decide: (job, action) => void store.decide(job, action),
+      <div className="scenario-tabs" role="group" aria-label="Sample scenario">
+        {DEMO_SCENARIOS.map((s) => (
+          <button key={s.id} type="button" aria-pressed={s.id === scenario.id} onClick={() => setScenarioId(s.id)}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {store.analysis && (
+        <AnalysisView
+          key={scenario.id}
+          analysis={store.analysis}
+          mainCv={scenario.cv}
+          controls={{
+            choose: () => {},
+            changeFocus: () => {},
+            decide: (action) => void store.decide(action),
+            retry: () => {},
           }}
         />
-      </section>
-    </>
+      )}
+    </section>
   );
 }
