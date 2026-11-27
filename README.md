@@ -207,9 +207,9 @@ This is a local development project, not a hardened service.
   no content sniffing, no parsing timeout, and no body-size limit at the server level. `cv_text` and the CV
   JSON in several endpoints have no maximum length.
 - Nothing is stored on the server. Logs do not contain CV or posting text.
-- `requirements.txt` pins FastAPI 0.115.12, which brings Starlette 0.46.2. That version has published
-  advisories (multipart parsing, Range and Host header handling, among others). Upgrade before exposing the API
-  publicly.
+- Dependencies are pinned or locked (`requirements.txt`, `frontend/package-lock.json`). `pip-audit` and
+  `npm audit` (with and without dev dependencies) reported no known advisories when last run, on 27 November
+  2026. New advisories appear over time; run them again before deploying.
 - CV and posting text is passed to a language model, so a crafted document can try to steer it. Its output
   is validated as described above, but this is not a complete defence.
 
