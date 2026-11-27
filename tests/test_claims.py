@@ -8,7 +8,7 @@ literal "3" a "skill not in the CV", so a harmless summary was refused.
 
 import pytest
 
-from app.careers.core.claims import Problem, faithfulness_problems, skill_like_terms
+from app.careers.core.claims import Problem, faithfulness_problems, skill_like_terms, stem
 
 JOB = "We ship fast: what takes 3 years elsewhere takes months here. You know Python and APIs."
 SOURCE = "Python engineer with 3+ years of experience building APIs."
@@ -71,3 +71,19 @@ def test_optional_skills_of_other_tracks_are_not_added():
     assert leaked == [Problem("skills", ("Kubernetes", "PyTorch", "Terraform"))]
 
     assert problems("Python engineer who builds and ships APIs with FastAPI.", MULTI_TRACK_JOB, source) == []
+
+
+LINES = ["- Kubernetes experience is a plus", "Kubernetes knowledge preferred.", "• Docker skills"]
+
+
+@pytest.mark.parametrize("line", LINES)
+def test_a_skill_named_first_in_a_requirement_line_is_a_skill(line):
+    name = line.strip("-• ").split()[0].casefold()
+    assert stem(name) in skill_like_terms(line)
+    assert problems(
+        "Experienced with Kubernetes.", job="- Kubernetes experience is a plus\n- Python", source="Python."
+    ) == [Problem("skills", ("Kubernetes",))]
+
+
+def test_other_first_words_of_a_line_are_still_not_skills():
+    assert skill_like_terms("- Strong Python experience\n- Excellent communication") == {"python"}

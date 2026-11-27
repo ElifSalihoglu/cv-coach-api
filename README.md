@@ -192,6 +192,15 @@ published here.
 - Validation is rule-based (word lists, patterns). It reduces unsupported claims but does not prove their
   absence. The seniority and claim word lists cover English and Turkish.
 - Scanned PDFs are not supported (no OCR).
+- Skill detection in the claim check is heuristic: a skill is recognised when it is capitalised mid-sentence, written
+  as a name (CamelCase, ALLCAPS, digits) or followed by "experience" or "knowledge". A plain lowercase or
+  sentence-initial word can be missed, and free text that names no skill ("I keep clear written records") is not
+  checked.
+- The model may ask no questions about requirements the CV lacks (seen in one real run: Pinecone and Kubernetes
+  were not raised). Suggestions can also be few when a posting mostly asks for what the CV does not show.
+- Text extracted from some PDFs keeps doubled spaces.
+- Real-model behaviour was checked once with `gpt-4.1-mini` on two synthetic cases (an IT and a teaching posting);
+  this is not a benchmark.
 - The CV text and the posting are sent to OpenAI. Review the text before the structuring call.
 - Quality was checked with fake clients in tests and a small rule-based script; there are no published
   quality or cost figures, and other models were not tried.

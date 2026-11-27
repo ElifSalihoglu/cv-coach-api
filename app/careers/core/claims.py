@@ -38,11 +38,15 @@ def tokens(text: str) -> set[str]:
     return {stem(m.group()) for m in _WORD.finditer(text or "")}
 
 
+_SKILL_NOUN_NEXT = re.compile(r"\s+(?:experience|knowledge|expertise|proficiency|familiarity|skills)\b", re.I)
+
+
 def skill_like_terms(job_description: str) -> set[str]:
     """
     Terms in the job description that look like skills or tools: ALLCAPS,
     CamelCase, names with digits or + # . / -, and capitalised words that are
-    not at the start of a sentence (Python, Kubernetes, Machine Learning).
+    not at the start of a sentence (Python, Kubernetes, Machine Learning), or at the
+    start but followed by "experience", "knowledge" and the like ("Kubernetes experience").
     """
     terms: set[str] = set()
     for match in _WORD.finditer(job_description or ""):
@@ -53,12 +57,14 @@ def skill_like_terms(job_description: str) -> set[str]:
             continue
         before = job_description[: match.start()].rstrip(" \t")
         sentence_start = not before or before[-1] in _SENTENCE_END
+        # "Kubernetes experience is a plus": a skill named first in a requirement line.
+        names_skill = bool(_SKILL_NOUN_NEXT.match(job_description, match.end()))
         if (
             re.search(r"\d", word)
             or re.search(r"[+#]", word)
             or (len(word) >= 2 and word.isupper())
             or re.search(r"[a-zçğıöşü][A-ZÇĞİÖŞÜ]", word)
-            or (word[0].isupper() and len(word) > 2 and not sentence_start)
+            or (word[0].isupper() and len(word) > 2 and (not sentence_start or names_skill))
         ):
             terms.add(stem(word))
     return terms
