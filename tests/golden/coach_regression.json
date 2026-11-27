@@ -1,0 +1,1308 @@
+{
+ "claims": {
+  "design": [
+   [],
+   [],
+   [
+    "Designed REST APIs and architected the billing platform",
+    "architected the billing platform"
+   ],
+   [],
+   [],
+   [],
+   []
+  ],
+  "job_terms": [
+   "ai",
+   "airflow",
+   "api",
+   "devop",
+   "engineer",
+   "fastapi",
+   "game",
+   "kubernete",
+   "llm",
+   "node.j",
+   "non-devop",
+   "postgresql",
+   "react",
+   "rest",
+   "terraform",
+   "typescript"
+  ],
+  "offers_choice": [
+   true,
+   false,
+   false
+  ],
+  "problems": [
+   [
+    [
+     "numbers",
+     [
+      "35"
+     ]
+    ],
+    [
+     "skills",
+     [
+      "Kubernetes"
+     ]
+    ]
+   ],
+   [
+    [
+     "skills",
+     [
+      "LLM"
+     ]
+    ]
+   ],
+   [],
+   [],
+   [
+    [
+     "seniority",
+     [
+      "Kıdemli",
+      "yönetici"
+     ]
+    ]
+   ],
+   [],
+   []
+  ]
+ },
+ "flow_ai": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [
+    {
+     "id": "ask:kubernetes",
+     "level": "preferred",
+     "requirement": "Kubernetes or Terraform for the non-DevOps tracks",
+     "term": "Kubernetes",
+     "text": "The posting prefers Kubernetes. Your CV doesn't mention it. Have you used it?"
+    }
+   ],
+   "requirements": [
+    {
+     "level": "required",
+     "quote": "3+ years of professional software engineering experience",
+     "text": "3+ years of software engineering"
+    },
+    {
+     "level": "required",
+     "quote": "Ownership of services in production",
+     "text": "Ownership of services in production"
+    },
+    {
+     "level": "preferred",
+     "quote": "Experience with PostgreSQL",
+     "text": "PostgreSQL"
+    }
+   ],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Software engineer with seven years in Python, APIs and data pipelines who ships LLM-based automations to production, such as an invoice triage agent handling 12,000 documents per month.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 1,
+     "rationale": "Shows the production LLM agent and its scale first.",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "direct"
+    },
+    {
+     "after": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "before": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "id": "promote:exp1.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 2,
+     "rationale": "Related: general model evaluation, not specifically LLM outputs.",
+     "requirement": "You evaluate LLM outputs with test sets and monitor quality in production",
+     "sources": [
+      {
+       "id": "exp1.b4",
+       "text": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "before": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "id": "promote:exp1.b2",
+     "kind": "promote",
+     "level": "required",
+     "position": 2,
+     "priority": 3,
+     "rationale": "Related: queues and retries support reliable automations.",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b2",
+       "text": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "flow_choice": {
+  "calls": 1,
+  "first_input": {
+   "candidate": {
+    "experiences": [
+     {
+      "bullets": [
+       {
+        "id": "exp1.b1",
+        "position": 1,
+        "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%."
+       },
+       {
+        "id": "exp1.b2",
+        "position": 2,
+        "text": "Designed workflow automations with queues and retries, replacing five hand-run scripts."
+       },
+       {
+        "id": "exp1.b3",
+        "position": 3,
+        "text": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%."
+       },
+       {
+        "id": "exp1.b4",
+        "position": 4,
+        "text": "Set up evaluation dashboards and offline test sets to track model quality across releases."
+       },
+       {
+        "id": "exp1.b5",
+        "position": 5,
+        "text": "Mentored four engineers and led the weekly architecture review."
+       }
+      ],
+      "employer": "Boğaz Yazılım",
+      "id": "exp1",
+      "title": "Senior Software Engineer"
+     },
+     {
+      "bullets": [
+       {
+        "id": "exp2.b1",
+        "position": 1,
+        "text": "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week."
+       },
+       {
+        "id": "exp2.b2",
+        "position": 2,
+        "text": "Built a feature store serving 40 features to three production models."
+       },
+       {
+        "id": "exp2.b3",
+        "position": 3,
+        "text": "Introduced data-quality checks that caught schema drift before it reached reports."
+       },
+       {
+        "id": "exp2.b4",
+        "position": 4,
+        "text": "Integrated third-party APIs and webhooks into internal tools for the operations team."
+       }
+      ],
+      "employer": "Çınar Veri",
+      "id": "exp2",
+      "title": "Data Engineer"
+     }
+    ],
+    "projects": [],
+    "skills": [
+     "Python",
+     "FastAPI",
+     "Airflow",
+     "SQL",
+     "Docker",
+     "REST APIs"
+    ],
+    "summary": "Software engineer with seven years of experience in Python, APIs and data pipelines."
+   },
+   "focus": "",
+   "job_description": "Software Engineer (m/f/d) - choose your track\n\nAbout the role\nNorthstar Games builds the live-ops platform behind several mobile games. You join one of four tracks and work in a small cross-functional team.\n\nTracks\n- TypeScript: build our player-facing dashboards with React and Node.js.\n- Python: build backend services and data pipelines with FastAPI and Airflow. You design and maintain REST APIs and integrate partner webhooks.\n- DevOps: run our platform on Kubernetes and automate infrastructure with Terraform.\n- AI: ship LLM features to production and keep agents and tools reliable. You evaluate LLM outputs with test sets and monitor quality in production.\n\nWhat you bring (all tracks)\n- 3+ years of professional software engineering experience\n- Ownership of services in production\n- Clear written communication\n\nNice to have\n- Experience with PostgreSQL\n- Kubernetes or Terraform for the non-DevOps tracks\n- Knowledge of mobile gaming\n",
+   "job_title": "Software Engineer (m/f/d) - choose your track",
+   "posting_offers_choice": true
+  },
+  "inputs": [
+   "514b86a69678ed46464863d1583e749a1cfd5ca6aa014093baa90e8da51bc8a5"
+  ],
+  "result": {
+   "dropped": 2,
+   "dropped_reasons": {
+    "evidence_not_in_cv": 1,
+    "track_not_in_posting": 1
+   },
+   "focus": "",
+   "kind": "choose_focus",
+   "questions": [],
+   "requirements": [
+    {
+     "level": "required",
+     "quote": "3+ years of professional software engineering experience",
+     "text": "3+ years of software engineering"
+    },
+    {
+     "level": "required",
+     "quote": "Ownership of services in production",
+     "text": "Ownership of services in production"
+    },
+    {
+     "level": "preferred",
+     "quote": "Experience with PostgreSQL",
+     "text": "PostgreSQL"
+    }
+   ],
+   "responsibilities": [
+    "Join one of four tracks in a small team"
+   ],
+   "suggestions": [],
+   "tracks": [
+    {
+     "coverage": "strong",
+     "evidence": [
+      {
+       "source_id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım",
+       "why": "LLM invoice triage agent in production."
+      },
+      {
+       "source_id": "exp1.b4",
+       "text": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+       "where": "Senior Software Engineer — Boğaz Yazılım",
+       "why": "Model evaluation work."
+      },
+      {
+       "source_id": "exp1.b2",
+       "text": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+       "where": "Senior Software Engineer — Boğaz Yazılım",
+       "why": "Queues and retries for reliability."
+      }
+     ],
+     "id": "ai",
+     "name": "AI",
+     "note": "",
+     "quote": "ship LLM features to production and keep agents and tools reliable",
+     "summary": "LLM features in production."
+    },
+    {
+     "coverage": "strong",
+     "evidence": [
+      {
+       "source_id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri",
+       "why": "Integrated third-party APIs and webhooks."
+      },
+      {
+       "source_id": "exp2.b1",
+       "text": "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
+       "where": "Data Engineer — Çınar Veri",
+       "why": "Python and Airflow pipelines."
+      }
+     ],
+     "id": "python",
+     "name": "Python",
+     "note": "",
+     "quote": "build backend services and data pipelines with FastAPI and Airflow",
+     "summary": "Backend services and data pipelines."
+    },
+    {
+     "coverage": "none",
+     "evidence": [],
+     "id": "typescript",
+     "name": "TypeScript",
+     "note": "No explicit TypeScript experience found in your CV.",
+     "quote": "build our player-facing dashboards with React and Node.js",
+     "summary": "Player-facing dashboards."
+    },
+    {
+     "coverage": "none",
+     "evidence": [],
+     "id": "devops",
+     "name": "DevOps",
+     "note": "No explicit DevOps experience found in your CV.",
+     "quote": "run our platform on Kubernetes and automate infrastructure with Terraform",
+     "summary": "Platform and infrastructure."
+    }
+   ]
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "flow_clear_posting_asks_twice": {
+  "calls": 2,
+  "inputs": [
+   "f006b8a728149057734883fe5a71eb18adb552cd9d05f5c8cf92295c6c4a35b6",
+   "c78496d5f4ed3dc17e90f08d44ba0b65e27aa7968dd72ec6651c6554da44e2a0"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "AI Automation Engineer",
+   "kind": "suggestions",
+   "questions": [
+    {
+     "id": "ask:monitoring",
+     "level": "required",
+     "requirement": "Design workflows with queues, retries and monitoring",
+     "term": "monitoring",
+     "text": "The posting requires monitoring. Your CV doesn't mention it. Have you used it?"
+    }
+   ],
+   "requirements": [
+    {
+     "level": "required",
+     "quote": "Experience shipping automation or LLM features to production",
+     "text": "Ship LLM features"
+    }
+   ],
+   "responsibilities": [
+    "Build agents that classify documents"
+   ],
+   "suggestions": [
+    {
+     "after": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "before": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "id": "promote:exp2.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 1,
+     "rationale": "Related: integration work.",
+     "requirement": "Integrate third-party APIs and webhooks into internal tools",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Software engineer with seven years in Python, APIs and data pipelines who ships LLM-based automations to production, such as an invoice triage agent handling 12,000 documents per month.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 2,
+     "rationale": "Related experience: this line is close to the requirement but does not mention llm.",
+     "requirement": "Experience shipping automation or LLM features to production",
+     "sources": [
+      {
+       "id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e",
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "flow_clear_posting_direct": {
+  "calls": 1,
+  "inputs": [
+   "f006b8a728149057734883fe5a71eb18adb552cd9d05f5c8cf92295c6c4a35b6"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "AI Automation",
+   "kind": "suggestions",
+   "questions": [
+    {
+     "id": "ask:monitoring",
+     "level": "required",
+     "requirement": "Design workflows with queues, retries and monitoring",
+     "term": "monitoring",
+     "text": "The posting requires monitoring. Your CV doesn't mention it. Have you used it?"
+    }
+   ],
+   "requirements": [
+    {
+     "level": "required",
+     "quote": "Experience shipping automation or LLM features to production",
+     "text": "Ship LLM features"
+    }
+   ],
+   "responsibilities": [
+    "Build agents that classify documents"
+   ],
+   "suggestions": [
+    {
+     "after": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "before": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "id": "promote:exp2.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 1,
+     "rationale": "Related: integration work.",
+     "requirement": "Integrate third-party APIs and webhooks into internal tools",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Software engineer with seven years in Python, APIs and data pipelines who ships LLM-based automations to production, such as an invoice triage agent handling 12,000 documents per month.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 2,
+     "rationale": "Related experience: this line is close to the requirement but does not mention llm.",
+     "requirement": "Experience shipping automation or LLM features to production",
+     "sources": [
+      {
+       "id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "flow_python": {
+  "calls": 1,
+  "inputs": [
+   "79542543ea2c14f5decc13260df370807901581bd1ed5fb7b2e824cae30aea09"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "Python Backend",
+   "kind": "suggestions",
+   "questions": [
+    {
+     "id": "ask:postgresql",
+     "level": "preferred",
+     "requirement": "Experience with PostgreSQL",
+     "term": "PostgreSQL",
+     "text": "The posting prefers PostgreSQL. Your CV doesn't mention it. Have you used it?"
+    }
+   ],
+   "requirements": [
+    {
+     "level": "required",
+     "quote": "3+ years of professional software engineering experience",
+     "text": "3+ years of software engineering"
+    },
+    {
+     "level": "required",
+     "quote": "Ownership of services in production",
+     "text": "Ownership of services in production"
+    },
+    {
+     "level": "preferred",
+     "quote": "Experience with PostgreSQL",
+     "text": "PostgreSQL"
+    }
+   ],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "before": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "id": "promote:exp2.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 1,
+     "rationale": "Related: integrating APIs and webhooks, not designing REST APIs.",
+     "requirement": "You design and maintain REST APIs and integrate partner webhooks",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Backend engineer with seven years in Python, APIs and data pipelines, who integrates third-party APIs and webhooks and runs Airflow pipelines that saved about 20 engineer-hours per week.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 2,
+     "rationale": "Related experience: this line is close to the requirement but does not mention fastapi.",
+     "requirement": "build backend services and data pipelines with FastAPI and Airflow",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      },
+      {
+       "id": "exp2.b1",
+       "text": "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Built a feature store serving 40 features to three production models.",
+     "before": "Built a feature store serving 40 features to three production models.",
+     "id": "promote:exp2.b2",
+     "kind": "promote",
+     "level": "required",
+     "position": 2,
+     "priority": 3,
+     "rationale": "Feature store pipelines.",
+     "requirement": "build backend services and data pipelines with FastAPI and Airflow",
+     "sources": [
+      {
+       "id": "exp2.b2",
+       "text": "Built a feature store serving 40 features to three production models.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_already_first": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "already_first": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_direct_claim_without_support": {
+  "calls": 1,
+  "inputs": [
+   "25155af09a77de10b5b252a1c301d00daffa041556aef17e42912bff28fdb7db"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "before": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "id": "promote:exp2.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 1,
+     "rationale": "Related experience: this line is close to the requirement but does not mention rest.",
+     "requirement": "You design and maintain REST APIs and integrate partner webhooks",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_generic_requirement": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "generic_requirement": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_over_limit_and_duplicates": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 3,
+   "dropped_reasons": {
+    "over_limit_or_duplicate": 3
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "before": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "id": "promote:exp1.b2",
+     "kind": "promote",
+     "level": "required",
+     "position": 2,
+     "priority": 1,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b2",
+       "text": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+     "before": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+     "id": "promote:exp1.b3",
+     "kind": "promote",
+     "level": "required",
+     "position": 3,
+     "priority": 2,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b3",
+       "text": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "before": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "id": "promote:exp1.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 3,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b4",
+       "text": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Software engineer with seven years in Python, APIs and data pipelines who ships LLM-based automations to production, such as an invoice triage agent handling 12,000 documents per month.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 4,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "direct"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_priority_order": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "before": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+     "id": "promote:exp1.b4",
+     "kind": "promote",
+     "level": "required",
+     "position": 4,
+     "priority": 1,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b4",
+       "text": "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+     "before": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+     "id": "promote:exp1.b3",
+     "kind": "promote",
+     "level": "required",
+     "position": 3,
+     "priority": 2,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b3",
+       "text": "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    },
+    {
+     "after": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "before": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+     "id": "promote:exp1.b2",
+     "kind": "promote",
+     "level": "required",
+     "position": 2,
+     "priority": 3,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b2",
+       "text": "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_questions": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 4,
+   "dropped_reasons": {
+    "question_not_grounded": 3,
+    "too_many_questions": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [
+    {
+     "id": "ask:kubernetes",
+     "level": "preferred",
+     "requirement": "Kubernetes or Terraform for the non-DevOps tracks",
+     "term": "Kubernetes",
+     "text": "The posting prefers Kubernetes. Your CV doesn't mention it. Have you used it?"
+    },
+    {
+     "id": "ask:terraform",
+     "level": "preferred",
+     "requirement": "Kubernetes or Terraform for the non-DevOps tracks",
+     "term": "Terraform",
+     "text": "The posting prefers Terraform. Your CV doesn't mention it. Have you used it?"
+    }
+   ],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_quote_not_in_posting": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "quote_not_in_posting": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_requirement_quote_not_in_posting": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 2,
+   "dropped_reasons": {
+    "requirement_quote_not_in_posting": 2
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [
+    {
+     "level": "preferred",
+     "quote": "Experience with PostgreSQL",
+     "text": "PostgreSQL"
+    }
+   ],
+   "responsibilities": [
+    "a",
+    "b"
+   ],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_rewrite_not_substantive": {
+  "calls": 1,
+  "inputs": [
+   "25155af09a77de10b5b252a1c301d00daffa041556aef17e42912bff28fdb7db"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "rewrite_not_substantive": 1
+   },
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_rewrite_ok": {
+  "calls": 1,
+  "inputs": [
+   "25155af09a77de10b5b252a1c301d00daffa041556aef17e42912bff28fdb7db"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Integrated third-party APIs and webhooks into internal tools used by the operations team every week.",
+     "before": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+     "id": "rewrite:exp2.b4",
+     "kind": "rewrite",
+     "level": "required",
+     "position": null,
+     "priority": 1,
+     "rationale": "r",
+     "requirement": "You design and maintain REST APIs and integrate partner webhooks",
+     "sources": [
+      {
+       "id": "exp2.b4",
+       "text": "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_rewrite_unsupported_claim": {
+  "calls": 1,
+  "inputs": [
+   "25155af09a77de10b5b252a1c301d00daffa041556aef17e42912bff28fdb7db"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "rewrite_unsupported_claim": 1
+   },
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_single_track_falls_back_to_suggestions": {
+  "calls": 1,
+  "inputs": [
+   "514b86a69678ed46464863d1583e749a1cfd5ca6aa014093baa90e8da51bc8a5"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Built a feature store serving 40 features to three production models.",
+     "before": "Built a feature store serving 40 features to three production models.",
+     "id": "promote:exp2.b2",
+     "kind": "promote",
+     "level": "required",
+     "position": 2,
+     "priority": 1,
+     "rationale": "r",
+     "requirement": "build backend services and data pipelines with FastAPI and Airflow",
+     "sources": [
+      {
+       "id": "exp2.b2",
+       "text": "Built a feature store serving 40 features to three production models.",
+       "where": "Data Engineer — Çınar Veri"
+      }
+     ],
+     "support": "related"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_source_not_in_cv": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "source_not_in_cv": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_summary_ok": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 0,
+   "dropped_reasons": {},
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [
+    {
+     "after": "Software engineer with seven years in Python, APIs and data pipelines who ships LLM-based automations to production, such as an invoice triage agent handling 12,000 documents per month.",
+     "before": "Software engineer with seven years of experience in Python, APIs and data pipelines.",
+     "id": "summary",
+     "kind": "summary",
+     "level": "required",
+     "position": null,
+     "priority": 1,
+     "rationale": "r",
+     "requirement": "ship LLM features to production and keep agents and tools reliable",
+     "sources": [
+      {
+       "id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım"
+      }
+     ],
+     "support": "direct"
+    }
+   ],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_summary_same_as_cv": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "summary_not_new": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_summary_unsupported_action": {
+  "calls": 1,
+  "inputs": [
+   "25155af09a77de10b5b252a1c301d00daffa041556aef17e42912bff28fdb7db"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "summary_unsupported_action": 1
+   },
+   "focus": "Python",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_summary_unsupported_claim": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "summary_unsupported_claim": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_tracks_edge_cases": {
+  "calls": 1,
+  "inputs": [
+   "514b86a69678ed46464863d1583e749a1cfd5ca6aa014093baa90e8da51bc8a5"
+  ],
+  "result": {
+   "dropped": 4,
+   "dropped_reasons": {
+    "evidence_not_in_cv": 2,
+    "track_not_in_posting": 2
+   },
+   "focus": "",
+   "kind": "choose_focus",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": [
+    {
+     "coverage": "partial",
+     "evidence": [
+      {
+       "source_id": "exp2.b1",
+       "text": "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
+       "where": "Data Engineer — Çınar Veri",
+       "why": "w"
+      }
+     ],
+     "id": "python",
+     "name": "Python",
+     "note": "",
+     "quote": "build backend services and data pipelines with FastAPI and Airflow",
+     "summary": "s"
+    },
+    {
+     "coverage": "partial",
+     "evidence": [
+      {
+       "source_id": "exp1.b1",
+       "text": "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+       "where": "Senior Software Engineer — Boğaz Yazılım",
+       "why": "w"
+      }
+     ],
+     "id": "ai",
+     "name": "AI",
+     "note": "",
+     "quote": "ship LLM features to production and keep agents and tools reliable",
+     "summary": "s"
+    }
+   ]
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ },
+ "gate_unknown_kind": {
+  "calls": 1,
+  "inputs": [
+   "a7771ebf380fe0f5b42c08fecac2f53da423989192a5652778f3df34ea227da7"
+  ],
+  "result": {
+   "dropped": 1,
+   "dropped_reasons": {
+    "unknown_kind": 1
+   },
+   "focus": "AI",
+   "kind": "suggestions",
+   "questions": [],
+   "requirements": [],
+   "responsibilities": [],
+   "suggestions": [],
+   "tracks": []
+  },
+  "system_prompts": [
+   "7f39635fea7349f70f91bbda6d3796e229d8ebb40fa27912891c3828c2b1c79e"
+  ]
+ }
+}

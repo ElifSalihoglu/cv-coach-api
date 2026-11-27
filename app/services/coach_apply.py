@@ -17,7 +17,7 @@ from app.models.coaching import (
 )
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 from app.services.cv_changes import _ordinal, _where
-from app.services.cv_tailoring import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
 
 
 class DecisionError(Exception):

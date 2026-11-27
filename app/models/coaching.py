@@ -148,6 +148,8 @@ class CoachRequest(BaseModel):
     job_title: str = Field(..., min_length=1)
     job_description: str = Field(..., min_length=1, max_length=20_000)
     focus: str = Field("", max_length=120, description="Track the user chose, if any.")
+    domain: str = Field("", max_length=40, description="Optional: force an agent (its id or domain name).")
+    career_goal: str = Field("", max_length=200, description="Optional: the position the user is aiming at.")
 
 
 class Decision(BaseModel):

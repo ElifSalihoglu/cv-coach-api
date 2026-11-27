@@ -18,8 +18,9 @@ from app.evals.coach_fixture import (
     CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, CV, JOB_DESCRIPTION, JOB_TITLE,
 )
 from app.models.coaching import CoachModelOutput, CoachResult
-from app.services.job_coach import _fold, _is_generic, _quote_in, _slug
-from app.services.cv_tailoring import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.agents.it.rules import is_generic as _is_generic
+from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.core.evidence import fold as _fold, quote_in as _quote_in, slug as _slug
 
 RESULTS = Path(__file__).resolve().parents[1] / "evals" / "results"
 POSTINGS = {"choice": JOB_DESCRIPTION, "ai": JOB_DESCRIPTION, "python": JOB_DESCRIPTION, "clear": CLEAR_JOB_DESCRIPTION}
@@ -60,7 +61,7 @@ def heading(text: str) -> None:
 def header(run: dict) -> None:
     heading("RUN")
     print(f"model {run['model']} | prompt {run['prompt_version']} | budget {run['budget']} | calls made {len(run['calls'])}")
-    print("fingerprint (prompt / validation / faithfulness / sample data):", run["fingerprint"])
+    print("fingerprint (config / prompt / validation / faithfulness / fixture):", run["fingerprint"])
     for label, status in run["status"].items():
         print(f"  {label:12} {status}")
     print("calls:")

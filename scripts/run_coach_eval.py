@@ -34,14 +34,15 @@ from pathlib import Path
 import openai
 from PyPDF2 import PdfReader
 
+from app.evals.fingerprint import agent_fingerprint
 from app.evals.coach_fixture import (
     CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, CV, JOB_DESCRIPTION, JOB_TITLE,
 )
 from app.models.coaching import ApplyRequest, CoachResult, Decision
-from app.prompts.coach_templates import COACH_SYSTEM_PROMPT
+from app.careers.agents.it import IT_AGENT, IT_PROFILE
+from app.careers.core.state import CareerCase
 from app.services.coach_apply import apply_decisions
 from app.services.cv_render import render_pdf
-from app.services.job_coach import ITCareerCoach
 from app.services.llm_client import LLMClient
 from app.services.openai_setup import REQUEST_TIMEOUT_SECONDS, get_openai_model
 
@@ -245,18 +246,6 @@ def check_decisions(result: CoachResult) -> list[Check]:
 SCENARIOS = ("choice", "ai", "python", "clear")
 
 
-def fingerprint() -> dict[str, str]:
-    """Hashes that show the prompt, the validation rules and the sample data did not change."""
-    root = Path(__file__).resolve().parents[1]
-    files = {
-        "prompt": root / "app/prompts/coach_templates.py",
-        "validation": root / "app/services/job_coach.py",
-        "faithfulness": root / "app/services/cv_tailoring.py",
-        "sample_data": root / "app/evals/coach_fixture.py",
-    }
-    return {k: hashlib.sha256(v.read_bytes()).hexdigest()[:10] for k, v in files.items()}
-
-
 def scenario_checks(key: str, result: CoachResult) -> list[Check]:
     if key == "choice":
         return check_choice(result)
@@ -271,9 +260,11 @@ async def run(args: argparse.Namespace) -> int:
     # Names like "Boğaz" must print on a Windows console too.
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     model = get_openai_model()
-    prompt_version = hashlib.sha256(COACH_SYSTEM_PROMPT.encode()).hexdigest()[:8]
+    prompt_version = hashlib.sha256(IT_PROFILE.system_prompt.encode()).hexdigest()[:8]
+    fingerprints = agent_fingerprint("it", model)  # the IT agent's: this evaluation is about it alone
     planned = CALLS_PER_REPEAT * args.repeat
     print(f"Model: {model} | prompt: {prompt_version} | repetitions: {args.repeat}")
+    print("Fingerprints: " + " | ".join(f"{k} {v}" for k, v in fingerprints.items()))
     print(f"Call budget: {args.budget} (planned without corrections: {planned}). "
           "Corrections and failed attempts count; no hidden SDK retries.")
     print("Data: synthetic candidate and synthetic postings only (app/evals/coach_fixture.py).")
@@ -288,7 +279,6 @@ async def run(args: argparse.Namespace) -> int:
     # max_retries=0: the SDK would otherwise retry silently and the budget could not be exact.
     client = openai.AsyncOpenAI(api_key=api_key, timeout=REQUEST_TIMEOUT_SECONDS, max_retries=0)
     recorder = Recording(LLMClient(openai_client=client, model=model), args.budget)
-    coach = ITCareerCoach(recorder)
 
     jobs = {
         "choice": (JOB_TITLE, JOB_DESCRIPTION, ""),
@@ -300,7 +290,7 @@ async def run(args: argparse.Namespace) -> int:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = RESULTS_DIR / f"coach_run_{stamp}_{model}_{prompt_version}.json"
     record: dict = {"model": model, "prompt_version": prompt_version, "budget": args.budget,
-                    "fingerprint": fingerprint(), "status": {}, "results": {}, "checks": {}, "calls": recorder.calls}
+                    "fingerprint": fingerprints, "status": {}, "results": {}, "checks": {}, "calls": recorder.calls}
 
     def save() -> None:
         path.write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -316,7 +306,7 @@ async def run(args: argparse.Namespace) -> int:
                 continue
             recorder.scenario = label
             try:
-                result = await coach.analyze(CV, *jobs[key])
+                result = await IT_AGENT.analyze(CareerCase(CV, *jobs[key]), recorder)
             except BudgetExhausted:
                 stopped = True
                 record["status"][label] = "incomplete: budget used up before its correction call"
