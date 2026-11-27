@@ -9,14 +9,15 @@ from app.models.cv_document import CVBullet, CVProject
 from app.services.coach_apply import (
     DecisionError, UnconfirmedClaims, apply_decisions, check_text,
 )
-from app.services.job_coach import ITCareerCoach
+from app.careers.agents.it import IT_AGENT
+from app.careers.core.state import CareerCase
 from tests.fixtures.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output
 
 ACCEPT = Decision(action="accept")
 
 
 def ai_suggestions():
-    result = asyncio.run(ITCareerCoach(FakeLLM(ai_output())).analyze(CV, JOB_TITLE, JOB_DESCRIPTION, "AI"))
+    result = asyncio.run(IT_AGENT.analyze(CareerCase(CV, JOB_TITLE, JOB_DESCRIPTION, "AI"), FakeLLM(ai_output())))
     return {s.id: s for s in result.suggestions}
 
 

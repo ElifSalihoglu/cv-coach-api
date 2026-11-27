@@ -4,10 +4,9 @@ import difflib
 import json
 from pathlib import Path
 
-from app.careers.agents.general import GENERAL_PROFILE, GeneralAgent
+from app.careers.agents.general import GENERAL_AGENT, GENERAL_PROFILE
 from app.careers.core.engine import DEFAULT_ENGINE
-from app.careers.registry import AgentRegistry
-from app.careers.agents.it import IT_AGENT, IT_PROFILE
+from app.careers.agents.it import IT_PROFILE
 from app.careers.agents.general.prompt import GENERAL_SYSTEM_PROMPT
 from app.careers.core.state import CareerCase
 from tests.fixtures.general_fixtures import (
@@ -15,7 +14,7 @@ from tests.fixtures.general_fixtures import (
     MECH_JOB_TITLE, NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
 )
 from app.models.coaching import CoachModelOutput, ModelSuggestion
-from app.prompts.coach_templates import COACH_SYSTEM_PROMPT
+from app.careers.agents.it.prompt import IT_SYSTEM_PROMPT
 from tests.fixtures.general_scenarios import (
     MECH_DESIGN_SUMMARY, MECH_LICENSED_SUMMARY, NURSE_SUMMARY, Q_COMMUNICATION, Q_DESIGN, Q_YEARS,
     marketing_output, mech_output, nurse_output,
@@ -30,14 +29,14 @@ def general(cv, description, output, focus=""):
 
 
 def it(cv, description, output, focus=""):
-    return IT_AGENT.build_result(cv, description, output, focus)
+    return DEFAULT_ENGINE.build_result(IT_PROFILE, cv, description, output, focus)
 
 
 # ---- a real agent, not a renamed copy
 
 def test_the_general_prompt_is_its_own_text_not_a_copy_of_the_it_prompt():
-    assert GENERAL_SYSTEM_PROMPT != COACH_SYSTEM_PROMPT
-    assert difflib.SequenceMatcher(None, GENERAL_SYSTEM_PROMPT, COACH_SYSTEM_PROMPT).ratio() < 0.5
+    assert GENERAL_SYSTEM_PROMPT != IT_SYSTEM_PROMPT
+    assert difflib.SequenceMatcher(None, GENERAL_SYSTEM_PROMPT, IT_SYSTEM_PROMPT).ratio() < 0.5
     for it_only in ("IT Career Coach", "technical recruiter", "LLM", "Kubernetes", "API"):
         assert it_only not in GENERAL_SYSTEM_PROMPT
     for general_only in ("licence", "transferable", "measured", "education", "certifications"):
@@ -82,7 +81,7 @@ def test_the_it_input_is_unchanged_and_still_carries_no_education_or_certificati
 
 def test_the_general_agent_turns_a_nurse_cv_into_checked_suggestions():
     llm = RecordingLLM(nurse_output())
-    result = asyncio.run(GeneralAgent(AgentRegistry()).analyze(CareerCase(NURSE_CV, NURSE_JOB_TITLE, NURSE_JOB_DESCRIPTION), llm))
+    result = asyncio.run(GENERAL_AGENT.analyze(CareerCase(NURSE_CV, NURSE_JOB_TITLE, NURSE_JOB_DESCRIPTION), llm))
 
     summary, promote = result.suggestions
     assert (summary.id, summary.after, summary.support) == ("summary", NURSE_SUMMARY, "direct")

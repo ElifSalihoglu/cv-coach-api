@@ -11,20 +11,20 @@ from pathlib import Path
 
 import pytest
 
-from app.careers.agents.general import GENERAL_PROFILE, GeneralAgent
+from app.careers.agents.general import GENERAL_AGENT, GENERAL_PROFILE
 from app.careers.agents.it import IT_AGENT, IT_PROFILE
 from app.careers.assembly import build_default_registry
 from app.careers.core.engine import DEFAULT_ENGINE, AgentEngine
 from app.careers.core.gates import Gate
 from app.careers.core.state import CareerCase
-from app.careers.registry import AgentRegistry
+from app.careers.orchestrator import CareerOrchestrator
 from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 from app.services.llm_client import LLMOutputError, LLMTimeoutError
 from tests.fixtures.coach_scenarios import ai_output, tracks_output
 from tests.test_coach_regression import RecordingLLM
-from tests.toy_agents import specialist
+from tests.toy_agents import career_agent
 
 ROOT = Path(__file__).resolve().parents[1] / "app"
 CORE = ROOT / "careers" / "core"
@@ -48,7 +48,7 @@ def test_the_engine_sends_the_profiles_prompt_and_input_and_returns_the_checked_
 
 def test_the_engine_asks_again_only_when_the_profile_says_the_posting_offers_no_choice():
     llm = RecordingLLM(tracks_output(), ai_output())
-    never_a_choice = specialist("x", "X")  # its offers_choice is always False
+    never_a_choice = career_agent("x", "X")  # its offers_choice is always False
     result = asyncio.run(DEFAULT_ENGINE.run(never_a_choice.profile, CareerCase(CV, JOB_TITLE, JOB_DESCRIPTION), llm))
     assert len(llm.calls) == 2 and result.kind == "suggestions"
     assert llm.calls[1][1]["focus"] == JOB_TITLE  # asked again, for the posting's one focus
@@ -72,12 +72,12 @@ def test_model_errors_reach_the_caller_unchanged():
 
 def test_domain_rules_enter_only_through_the_profile_and_run_after_the_shared_gates():
     never = Gate("profile_rule", lambda ctx, p: True, frozenset({"promote"}))
-    with_rule = specialist("x", "X", gates=(never,)).profile
+    with_rule = career_agent("x", "X", gates=(never,)).profile
     output = CoachModelOutput(suggestions=[ModelSuggestion(
         kind="promote", requirement_quote="ship LLM features to production and keep agents and tools reliable",
         level="required", source_ids=["exp1.b4"], support="related", priority=1, rationale="r")])
 
-    kept = DEFAULT_ENGINE.build_result(specialist("y", "Y").profile, CV, JOB_DESCRIPTION, output, "AI")
+    kept = DEFAULT_ENGINE.build_result(career_agent("y", "Y").profile, CV, JOB_DESCRIPTION, output, "AI")
     refused = DEFAULT_ENGINE.build_result(with_rule, CV, JOB_DESCRIPTION, output, "AI")
     assert [s.id for s in kept.suggestions] == ["promote:exp1.b4"]
     assert refused.dropped_reasons == {"profile_rule": 1}
@@ -88,8 +88,8 @@ def test_domain_rules_enter_only_through_the_profile_and_run_after_the_shared_ga
 def test_every_agent_runs_on_the_same_stateless_engine():
     assert vars(DEFAULT_ENGINE) == {} and vars(AgentEngine()) == {}  # nothing is kept between requests
     assert IT_AGENT._engine is DEFAULT_ENGINE
-    assert GeneralAgent(AgentRegistry())._engine is DEFAULT_ENGINE
-    assert specialist("x", "X")._engine is DEFAULT_ENGINE
+    assert GENERAL_AGENT._engine is DEFAULT_ENGINE
+    assert career_agent("x", "X")._engine is DEFAULT_ENGINE
 
 
 def test_the_engine_source_names_no_field_of_work_and_imports_no_agent():
@@ -101,8 +101,8 @@ def test_the_engine_source_names_no_field_of_work_and_imports_no_agent():
         assert "careers.agents" not in path.read_text(encoding="utf-8"), path.name
 
 
-def test_only_the_assembly_and_the_legacy_files_import_the_it_agent():
-    allowed = {"careers/assembly.py", "services/job_coach.py", "prompts/coach_templates.py"}
+def test_only_the_assembly_imports_the_it_agent():
+    allowed = {"careers/assembly.py"}
     importers = {
         path.relative_to(ROOT).as_posix()
         for path in ROOT.rglob("*.py")
@@ -112,8 +112,8 @@ def test_only_the_assembly_and_the_legacy_files_import_the_it_agent():
     assert importers == allowed
 
 
-def test_the_general_agent_router_and_registry_name_no_concrete_domain():
-    for name in ("careers/agents/general/agent.py", "careers/router.py", "careers/registry.py", "careers/facade.py"):
+def test_the_orchestrator_router_and_registry_name_no_concrete_domain():
+    for name in ("careers/orchestrator.py", "careers/router.py", "careers/registry.py"):
         text = (ROOT / name).read_text(encoding="utf-8")
         assert "agents.it" not in text and "IT_" not in text, name
 
@@ -145,11 +145,11 @@ class EchoLLM:
             support="related", priority=1, rationale=f"echo {system_prompt[:20]}")])
 
 
-def test_many_concurrent_requests_through_one_general_agent_never_see_each_others_data():
+def test_many_concurrent_requests_through_one_orchestrator_never_see_each_others_data():
     registry = build_default_registry()
-    registry.register(specialist("legal", "Legal", "lawyer"))
-    general = GeneralAgent(registry)
+    registry.register(career_agent("legal", "Legal", "lawyer"))
     llm = EchoLLM()
+    orchestrator = CareerOrchestrator(registry, GENERAL_AGENT, llm)
     titles = ["Backend Developer", "Chef", "Corporate Lawyer"]  # it, general, legal
     before = (copy.deepcopy(IT_PROFILE.limits), copy.deepcopy(GENERAL_PROFILE.limits))
 
@@ -158,7 +158,7 @@ def test_many_concurrent_requests_through_one_general_agent_never_see_each_other
         return CareerCase(_cv(n), titles[n % 3], posting, "")
 
     async def main():
-        return await asyncio.gather(*(general.handle(case(n), llm) for n in range(60)))
+        return await asyncio.gather(*(orchestrator.run(case(n)) for n in range(60)))
 
     outcomes = asyncio.run(main())
 

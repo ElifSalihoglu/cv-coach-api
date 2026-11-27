@@ -1,13 +1,14 @@
 """AgentRegistry (specialists only): registering, discovering and refusing bad agents. No model involved."""
 import pytest
 
-from app.careers.agents.general import GENERAL_CARD, GeneralAgent
+from app.careers.agents.general import GENERAL_AGENT, GENERAL_CARD
 from app.careers.agents.it import IT_AGENT
 from app.careers.registry import (
     AgentRegistry, DuplicateAgentError, InvalidAgentError, UnknownAgentError, UnknownDomainError,
 )
-from app.careers.assembly import build_default_general_agent, build_default_registry
-from tests.toy_agents import specialist
+from app.careers.assembly import build_default_registry, build_orchestrator
+from app.careers.orchestrator import CareerOrchestrator
+from tests.toy_agents import career_agent
 
 
 def test_the_default_registry_holds_the_it_specialist_and_not_the_general_agent():
@@ -15,7 +16,7 @@ def test_the_default_registry_holds_the_it_specialist_and_not_the_general_agent(
     assert [c.id for c in registry.cards()] == ["it"]
     assert registry.get("it") is IT_AGENT
     assert not registry.has(GENERAL_CARD.id)
-    assert isinstance(build_default_general_agent(), GeneralAgent)  # the entry point owns the registry
+    assert isinstance(build_orchestrator(llm=None), CareerOrchestrator)  # the orchestrator owns the registry
 
 
 def test_cards_carry_id_domain_version_capabilities_and_a_description():
@@ -25,27 +26,27 @@ def test_cards_carry_id_domain_version_capabilities_and_a_description():
 
 
 def test_a_duplicate_id_or_domain_is_refused():
-    registry = AgentRegistry([specialist("legal", "Legal")])
+    registry = AgentRegistry([career_agent("legal", "Legal")])
     with pytest.raises(DuplicateAgentError):
-        registry.register(specialist("legal", "Something else"))
+        registry.register(career_agent("legal", "Something else"))
     with pytest.raises(DuplicateAgentError):
-        registry.register(specialist("law", "  legal "))  # the same domain, spacing and case aside
+        registry.register(career_agent("law", "  legal "))  # the same domain, spacing and case aside
     assert len(registry) == 1
 
 
-def test_the_general_agent_refuses_a_registry_that_contains_it_by_id_or_by_domain():
+def test_the_orchestrator_refuses_a_registry_that_contains_it_by_id_or_by_domain():
     with pytest.raises(ValueError):
-        GeneralAgent(AgentRegistry([specialist("general", "Something")]))
+        CareerOrchestrator(AgentRegistry([career_agent("general", "Something")]), GENERAL_AGENT, llm=None)
     with pytest.raises(ValueError):
-        GeneralAgent(AgentRegistry([specialist("generalist", "general  career")]))
+        CareerOrchestrator(AgentRegistry([career_agent("generalist", "general  career")]), GENERAL_AGENT, llm=None)
 
 
 @pytest.mark.parametrize("bad", [
-    specialist("Legal", "Legal"),                  # id must be lowercase
-    specialist("1legal", "Legal"),                 # must start with a letter
-    specialist("legal", "   "),                    # a domain is required
-    specialist("legal", "Legal", "Lawyer"),        # cues are lowercase
-    specialist("legal", "Legal", "  "),            # no empty cue
+    career_agent("Legal", "Legal"),                  # id must be lowercase
+    career_agent("1legal", "Legal"),                 # must start with a letter
+    career_agent("legal", "   "),                    # a domain is required
+    career_agent("legal", "Legal", "Lawyer"),        # cues are lowercase
+    career_agent("legal", "Legal", "  "),            # no empty cue
 ])
 def test_a_malformed_agent_is_refused(bad):
     with pytest.raises(InvalidAgentError):

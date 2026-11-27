@@ -26,7 +26,9 @@ from tests.fixtures.coach_fixture import (
 from app.models.coaching import (
     CoachModelOutput, ModelEvidence, ModelQuestion, ModelRequirement, ModelSuggestion, ModelTrack,
 )
-from app.services.job_coach import ITCareerCoach, offers_choice, unsupported_design_claims
+from app.careers.agents.it import IT_AGENT
+from app.careers.agents.it.rules import offers_choice, unsupported_design_claims
+from app.careers.core.state import CareerCase
 from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
 from tests.fixtures.coach_scenarios import (
     AI_SUMMARY, PY_SUMMARY, Q_AI, Q_API, Q_PREF_K8S, Q_PREF_PG, Q_PY, Q_REQ,
@@ -148,7 +150,7 @@ def _gate_scenarios() -> dict[str, tuple[CoachModelOutput, str]]:
 
 def _run(outputs: list[CoachModelOutput], title: str, description: str, focus: str):
     llm = RecordingLLM(*outputs)
-    result = asyncio.run(ITCareerCoach(llm).analyze(CV, title, description, focus))
+    result = asyncio.run(IT_AGENT.analyze(CareerCase(CV, title, description, focus), llm))
     return llm, result
 
 

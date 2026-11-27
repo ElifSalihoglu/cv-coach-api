@@ -7,7 +7,9 @@ The three acceptance examples use the exact summaries from the saved live run
 from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.models.cv_document import CVBullet
-from app.services.job_coach import build_result, unsupported_design_claims
+from app.careers.agents.it import IT_PROFILE
+from app.careers.agents.it.rules import unsupported_design_claims
+from app.careers.core.engine import DEFAULT_ENGINE
 from tests.fixtures.coach_scenarios import Q_AI, Q_AI_EVAL, Q_PY
 
 # r2/python: the model claims design work the CV does not have (it only has integration)
@@ -33,7 +35,7 @@ def summary(after: str, quote: str, sources: list[str], support: str = "direct")
 
 
 def build(output: CoachModelOutput, cv=CV, focus: str = ""):
-    return build_result(cv, JOB_DESCRIPTION, output, focus)
+    return DEFAULT_ENGINE.build_result(IT_PROFILE, cv, JOB_DESCRIPTION, output, focus)
 
 
 # ---- (1) integration experience only: "designing REST APIs" never reaches the user ----

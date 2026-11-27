@@ -1,8 +1,8 @@
 """
-Choosing the agent for a posting. The General agent owns a router and asks it for a decision.
+Choosing the agent for a posting. The orchestrator asks the router for a decision.
 
-Order: an explicit override, then deterministic rules for clear matches only, then the General
-agent itself (it analyses what no specialist clearly claims). The router can only return the
+Order: an explicit override, then deterministic rules for clear matches only, then the general
+agent (it analyses what no specialist clearly claims). The router can only return the
 General agent or a specialist in the registry, and its only inputs are the posting, the job
 title and the target position (`RoutingSignals`; no CV).
 
@@ -33,7 +33,7 @@ def cues_in(text: str, cues: Sequence[str]) -> list[str]:
 
 
 class DefaultRouter:
-    """`general` is the General agent's card: its id is where an unclear posting goes."""
+    """`general` is the general agent's card: its id is where an unclear posting goes."""
 
     def __init__(self, general: AgentCard) -> None:
         self._general = general

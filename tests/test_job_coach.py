@@ -3,9 +3,14 @@ import asyncio
 
 import pytest
 
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from app.careers.agents.it import IT_AGENT, IT_PROFILE
+from app.careers.agents.it.model_input import coach_input
+from app.careers.agents.it.prompt import IT_SYSTEM_PROMPT
+from app.careers.agents.it.rules import offers_choice
+from app.careers.core.engine import DEFAULT_ENGINE
+from app.careers.core.state import CareerCase
 from app.models.coaching import CoachModelOutput, ModelQuestion, ModelRequirement, ModelSuggestion
-from app.services.job_coach import ITCareerCoach, build_result, coach_input
+from tests.fixtures.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.coach_scenarios import (
     AI_SUMMARY, PY_SUMMARY, Q_AI, Q_AI_EVAL, Q_API, Q_PREF_K8S, Q_PREF_PG, Q_PY,
     FakeLLM, ai_output, python_output, tracks_output,
@@ -13,7 +18,11 @@ from tests.fixtures.coach_scenarios import (
 
 
 def analyze(llm: FakeLLM, focus: str = ""):
-    return asyncio.run(ITCareerCoach(llm).analyze(CV, JOB_TITLE, JOB_DESCRIPTION, focus))
+    return asyncio.run(IT_AGENT.analyze(CareerCase(CV, JOB_TITLE, JOB_DESCRIPTION, focus), llm))
+
+
+def build_result(cv, job_description, output, focus=""):
+    return DEFAULT_ENGINE.build_result(IT_PROFILE, cv, job_description, output, focus)
 
 
 def result_for(output: CoachModelOutput, focus: str = ""):
@@ -289,7 +298,7 @@ def test_the_reasons_for_dropped_proposals_are_counted_without_their_text():
 
 
 def test_the_prompt_asks_for_focus_specific_targets_and_concrete_summaries():
-    from app.prompts.coach_templates import COACH_SYSTEM_PROMPT as prompt
+    prompt = IT_SYSTEM_PROMPT
     assert "Never target" in prompt and "years of experience" in prompt
     assert "No\n  buzzwords" in prompt or "buzzwords" in prompt
     assert "uses it" in prompt  # a figure in the source line goes into the summary
@@ -353,10 +362,6 @@ def test_an_honest_related_explanation_is_kept_as_written():
 
 # ---- a choice only where the posting offers one ----
 
-from tests.fixtures.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE  # noqa: E402
-from app.services.job_coach import offers_choice  # noqa: E402
-
-
 def test_the_posting_words_tell_whether_a_choice_is_offered():
     assert offers_choice(JOB_DESCRIPTION) is True
     assert offers_choice(CLEAR_JOB_DESCRIPTION) is False
@@ -366,7 +371,7 @@ def test_the_posting_words_tell_whether_a_choice_is_offered():
 
 def test_tracks_invented_for_a_clear_posting_are_not_shown_and_cost_one_more_call():
     llm = FakeLLM(tracks_output(), ai_output())  # first answer: responsibilities mistaken for tracks
-    result = asyncio.run(ITCareerCoach(llm).analyze(CV, CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION, ""))
+    result = asyncio.run(IT_AGENT.analyze(CareerCase(CV, CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION, ""), llm))
 
     assert result.kind == "suggestions"
     assert len(llm.calls) == 2

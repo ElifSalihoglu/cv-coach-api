@@ -2,7 +2,7 @@
 from app.careers.agents.it.gates import DRAFT_GATES, REQUIREMENT_GATES
 from app.careers.agents.it.model_input import coach_input
 from app.careers.agents.it.rules import offers_choice
-from app.careers.core.base_agent import SpecialistAgent
+from app.careers.core.agent import CareerAgent
 from app.careers.core.profile import DomainProfile
 from app.careers.core.state import AgentCard
 from app.careers.agents.it.prompt import IT_SYSTEM_PROMPT
@@ -33,6 +33,6 @@ IT_CARD = AgentCard(
     ),
 )
 
-IT_AGENT = SpecialistAgent(IT_CARD, IT_PROFILE)
+IT_AGENT = CareerAgent(IT_CARD, IT_PROFILE)
 
 __all__ = ["IT_AGENT", "IT_CARD", "IT_PROFILE"]

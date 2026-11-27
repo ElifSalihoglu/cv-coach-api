@@ -1,4 +1,4 @@
-"""DefaultRouter (owned by the General agent): override, clear matches, unclear postings. No model involved."""
+"""DefaultRouter (used by the orchestrator): override, clear matches, unclear postings. No model involved."""
 import dataclasses
 import inspect
 
@@ -14,7 +14,7 @@ from tests.fixtures.general_fixtures import (
     MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, MECH_JOB_DESCRIPTION, MECH_JOB_TITLE,
     NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
 )
-from tests.toy_agents import specialist
+from tests.toy_agents import career_agent
 
 
 def route(signals: RoutingSignals, registry=None, override=""):
@@ -80,21 +80,21 @@ def test_an_unknown_override_is_an_error_not_a_guess():
 
 def test_two_specialists_claiming_the_title_is_unclear_and_goes_to_the_general_agent():
     registry = build_default_registry()
-    registry.register(specialist("embedded", "Embedded systems", "firmware", "developer"))
+    registry.register(career_agent("embedded", "Embedded systems", "firmware", "developer"))
     decision = route(RoutingSignals("Firmware Developer", "Devices."), registry)
     assert decision.primary == "general" and decision.method == "fallback"
 
 
 def test_a_new_agent_is_routed_to_by_its_own_cues_with_no_router_change():
     registry = build_default_registry()
-    registry.register(specialist("legal", "Legal", "lawyer", "legal counsel"))
+    registry.register(career_agent("legal", "Legal", "lawyer", "legal counsel"))
     assert route(RoutingSignals("Corporate Legal Counsel", "Contracts."), registry).primary == "legal"
     assert route(RoutingSignals(NURSE_JOB_TITLE, NURSE_JOB_DESCRIPTION), registry).primary == "general"
 
 
 def test_the_description_can_veto_a_title_match_when_another_agent_fits_it_better():
-    registry = AgentRegistry([specialist("a", "Field A", "analyst", "data"),
-                              specialist("b", "Field B", "ledger", "audit", "tax")])
+    registry = AgentRegistry([career_agent("a", "Field A", "analyst", "data"),
+                              career_agent("b", "Field B", "ledger", "audit", "tax")])
     clear = route(RoutingSignals("Analyst", "Reporting."), registry)
     doubtful = route(RoutingSignals("Analyst", "Ledger work, audit trails and tax filings."), registry)
     assert clear.primary == "a" and doubtful.primary == "general"

@@ -7,10 +7,10 @@ from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
 from app.api.v1 import routes_coach
-from app.api.v1.routes_coach import get_job_coach
+from app.api.v1.routes_coach import get_orchestrator
+from app.careers.assembly import build_orchestrator
 from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.main import app
-from app.services.job_coach import ITCareerCoach
 from tests.fixtures.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output, python_output, tracks_output
 
 BODY = {"cv": CV.model_dump(), "job_title": JOB_TITLE, "job_description": JOB_DESCRIPTION}
@@ -19,7 +19,7 @@ BODY = {"cv": CV.model_dump(), "job_title": JOB_TITLE, "job_description": JOB_DE
 @pytest.fixture
 def llm(monkeypatch):
     fake = FakeLLM(tracks_output(), ai_output(), python_output())
-    monkeypatch.setitem(app.dependency_overrides, get_job_coach, lambda: ITCareerCoach(fake))
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: build_orchestrator(fake))
     return fake
 
 
@@ -34,7 +34,7 @@ def pdf_text(content: bytes) -> str:
 
 
 def test_without_an_api_key_the_coach_is_503(monkeypatch, client):
-    monkeypatch.setitem(app.dependency_overrides, get_job_coach, lambda: None)
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: None)
     assert client.post("/v1/coach/analyze", json=BODY).status_code == 503
 
 
@@ -51,7 +51,7 @@ def test_deciding_checking_and_downloading_never_call_the_model(monkeypatch, cli
     def boom():
         raise AssertionError("must not touch the model")
 
-    monkeypatch.setattr(routes_coach, "get_job_coach", boom)
+    monkeypatch.setattr(routes_coach, "get_orchestrator", boom)
     apply = client.post("/v1/coach/apply", json={"cv": CV.model_dump(), "suggestions": [], "decisions": {}})
     check = client.post("/v1/coach/check", json={"cv": CV.model_dump(), "kind": "summary", "text": "Python engineer."})
     assert apply.status_code == 200 and check.status_code == 200

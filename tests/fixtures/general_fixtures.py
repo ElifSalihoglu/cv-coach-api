@@ -1,6 +1,6 @@
 """
 Synthetic candidates and postings from professions outside IT, for the General agent, the
-router and the General agent (fake-model tests and, later, live evaluation). Nothing here is
+router and the orchestrator (fake-model tests). Nothing here is
 real personal or company data.
 """
 from app.models.cv_document import (
@@ -111,7 +111,7 @@ MARKETING_CV = StructuredCV(
 )
 
 # ------------------------------------------------------------------ mechanical engineering
-# (no engineering agent yet: the router has no clear match and the General agent answers)
+# (no engineering agent yet: the router has no clear match and the general agent answers)
 
 MECH_JOB_TITLE = "Mechanical Design Engineer"
 

@@ -10,9 +10,9 @@ from app.models.coaching import (
     CheckResult,
     CoachRequest,
 )
-from app.careers.assembly import build_default_general_agent
-from app.careers.core.state import CoachResponse, OrchestrationError
-from app.careers.facade import CoachFacade
+from app.careers.assembly import build_orchestrator
+from app.careers.core.state import CareerCase, CoachResponse, OrchestrationError
+from app.careers.orchestrator import CareerOrchestrator
 from app.careers.registry import UnknownDomainError
 from app.services.coach_apply import DecisionError, UnconfirmedClaims, apply_decisions, check_text
 from app.services.llm_client import (
@@ -27,18 +27,12 @@ router = APIRouter(prefix="/v1/coach")
 
 
 @lru_cache
-def get_job_coach() -> CoachFacade | None:
-    """
-    Build the coach once; return None when no API key is configured. Anything with
-    `analyze(cv, job_title, job_description, focus, *, domain, career_goal)` can stand in (tests do).
-    """
+def get_orchestrator() -> CareerOrchestrator | None:
+    """Build the orchestrator once; return None when no API key is configured."""
     openai_client = create_openai_client()
     if openai_client is None:
         return None
-    return CoachFacade(
-        build_default_general_agent(),
-        LLMClient(openai_client=openai_client, model=get_openai_model()),
-    )
+    return build_orchestrator(LLMClient(openai_client=openai_client, model=get_openai_model()))
 
 
 def _decision_error(exc: DecisionError) -> HTTPException:
@@ -51,20 +45,21 @@ def _decision_error(exc: DecisionError) -> HTTPException:
 @router.post("/analyze", response_model=CoachResponse)
 async def analyze(
     request: CoachRequest,
-    coach: Annotated[CoachFacade | None, Depends(get_job_coach)],
+    orchestrator: Annotated[CareerOrchestrator | None, Depends(get_orchestrator)],
 ) -> CoachResponse:
     """
     One model call. Without a focus the answer is either suggestions (a clear
     posting) or the tracks to choose from; with a focus it is suggestions.
     The agent is chosen from the posting (or forced with `domain`); `meta` says which one answered.
     """
-    if coach is None:
+    if orchestrator is None:
         raise HTTPException(status_code=503, detail="The career coach is unavailable.")
     try:
-        return await coach.analyze(
+        case = CareerCase(
             request.cv, request.job_title, request.job_description, request.focus.strip(),
-            domain=request.domain.strip(), career_goal=request.career_goal.strip(),
+            domain_override=request.domain.strip(), career_goal=request.career_goal.strip(),
         )
+        return (await orchestrator.run(case)).response()
     except UnknownDomainError as exc:
         raise HTTPException(status_code=422, detail={
             "code": exc.code, "message": str(exc), "available": exc.available,

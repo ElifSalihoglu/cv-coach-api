@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import openai
 from pydantic import BaseModel, ValidationError
@@ -13,6 +13,15 @@ logger = logging.getLogger("app.llm")
 TEMPERATURE = 0.3
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class ContentGenerator(Protocol):
+    """What the agents need from a model client; `LLMClient` is the real one, tests pass fakes."""
+
+    async def generate(
+        self, system_prompt: str, user_content: dict[str, Any], output_model: type[T]
+    ) -> T:
+        ...
 
 
 class LLMError(Exception):

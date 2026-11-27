@@ -1,23 +1,13 @@
-from typing import Any, Protocol, TypeVar
-
-from pydantic import BaseModel
+from typing import Protocol
 
 from app.models.cv_document import CVParseResponse, ParsedCV
 from app.prompts.cv_templates import PARSE_CV_SYSTEM_PROMPT
 from app.services.cv_parsing import assign_ids, check_against_text
-
-T = TypeVar("T", bound=BaseModel)
+from app.services.llm_client import ContentGenerator
 
 
 class CVCoach(Protocol):
     async def parse(self, cv_text: str) -> CVParseResponse:
-        ...
-
-
-class ContentGenerator(Protocol):
-    async def generate(
-        self, system_prompt: str, user_content: dict[str, Any], output_model: type[T]
-    ) -> T:
         ...
 
 

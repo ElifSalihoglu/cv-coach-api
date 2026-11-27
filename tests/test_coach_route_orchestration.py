@@ -1,10 +1,9 @@
-"""POST /v1/coach/analyze through the General agent: routing hints, `meta`, errors, old clients."""
+"""POST /v1/coach/analyze through the orchestrator: routing hints, `meta`, errors, old clients."""
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1.routes_coach import get_job_coach
-from app.careers.assembly import build_default_general_agent
-from app.careers.facade import CoachFacade
+from app.api.v1.routes_coach import get_orchestrator
+from app.careers.assembly import build_orchestrator
 from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.general_fixtures import NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE
 from app.main import app
@@ -19,8 +18,8 @@ NURSE_BODY = {"cv": NURSE_CV.model_dump(), "job_title": NURSE_JOB_TITLE, "job_de
 @pytest.fixture
 def llm(monkeypatch):
     fake = RecordingLLM(ai_output())
-    coach = CoachFacade(build_default_general_agent(), fake)
-    monkeypatch.setitem(app.dependency_overrides, get_job_coach, lambda: coach)
+    coach = build_orchestrator(fake)
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
     return fake
 
 
@@ -43,8 +42,8 @@ def test_an_old_client_request_without_routing_fields_still_works_and_says_who_a
 
 def test_a_posting_outside_it_is_answered_by_the_general_agent(monkeypatch, client):
     fake = RecordingLLM(nurse_output())
-    coach = CoachFacade(build_default_general_agent(), fake)
-    monkeypatch.setitem(app.dependency_overrides, get_job_coach, lambda: coach)
+    coach = build_orchestrator(fake)
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
 
     body = client.post("/v1/coach/analyze", json=NURSE_BODY).json()
     assert body["meta"]["routing"] == {
@@ -59,8 +58,8 @@ def test_the_optional_domain_forces_an_agent_and_the_career_goal_is_a_routing_hi
 
 def test_the_career_goal_helps_routing(monkeypatch, client):
     fake = RecordingLLM(ai_output())
-    coach = CoachFacade(build_default_general_agent(), fake)
-    monkeypatch.setitem(app.dependency_overrides, get_job_coach, lambda: coach)
+    coach = build_orchestrator(fake)
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
     body = {**IT_BODY, "job_title": "Team Member", "job_description": "Help the team.", "career_goal": "Backend developer"}
     assert client.post("/v1/coach/analyze", json=body).json()["meta"]["routing"]["primary"] == "it"
 

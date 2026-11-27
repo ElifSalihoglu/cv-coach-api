@@ -1,14 +1,14 @@
 """
-The specialist agents the system knows about. (The General agent is not in here: it owns the
-registry and is the entry point, so it does not discover itself.)
+The specialist agents the system knows about. The general agent is not one of them: the orchestrator
+holds it separately, as the agent for whatever no specialist clearly claims.
 
-Adding a domain means registering one more specialist (see `assembly.py`); the General agent,
-the router and the engine only ever ask the registry, so none of them changes.
+Adding a domain means registering one more specialist (see `assembly.py`); the orchestrator, the
+router and the engine only ever ask the registry, so none of them changes.
 """
 import re
 from typing import Iterable
 
-from app.careers.core.base_agent import BaseCareerAgent
+from app.careers.core.agent import CareerAgent
 from app.careers.core.state import AgentCard
 
 _ID = re.compile(r"[a-z][a-z0-9_-]{0,31}")
@@ -49,14 +49,14 @@ def name_key(text: str) -> str:
 
 
 class AgentRegistry:
-    def __init__(self, agents: Iterable[BaseCareerAgent] = ()) -> None:
-        self._agents: dict[str, BaseCareerAgent] = {}
+    def __init__(self, agents: Iterable[CareerAgent] = ()) -> None:
+        self._agents: dict[str, CareerAgent] = {}
         for agent in agents:
             self.register(agent)
 
     # ------------------------------------------------------------ registering
 
-    def register(self, agent: BaseCareerAgent) -> None:
+    def register(self, agent: CareerAgent) -> None:
         card = agent.card
         if not _ID.fullmatch(card.id):
             raise InvalidAgentError(f"Agent id {card.id!r} must be lowercase letters, digits, - or _.")
@@ -79,7 +79,7 @@ class AgentRegistry:
     def has(self, agent_id: str) -> bool:
         return agent_id in self._agents
 
-    def get(self, agent_id: str) -> BaseCareerAgent:
+    def get(self, agent_id: str) -> CareerAgent:
         try:
             return self._agents[agent_id]
         except KeyError:

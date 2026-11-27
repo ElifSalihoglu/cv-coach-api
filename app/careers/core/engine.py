@@ -45,7 +45,7 @@ from app.models.coaching import (
 )
 from app.models.cv_document import StructuredCV
 from app.services.cv_changes import _where
-from app.services.cv_coach import ContentGenerator
+from app.services.llm_client import ContentGenerator
 
 logger = logging.getLogger("app.coach")
 
