@@ -1,10 +1,10 @@
 """
-Preview and PDF output for a StructuredCV.
+PDF output for a StructuredCV. Never calls a model.
 
-Both are produced from the same StructuredCV object and never call a model.
-The PDF is a single column with an embedded Unicode font, so Turkish
-characters render correctly and the text stays selectable.
+The PDF is a single column with an embedded Unicode font, so Turkish characters render correctly
+and the text stays selectable.
 """
+
 import re
 from pathlib import Path
 
@@ -34,65 +34,12 @@ def cv_filename(cv: StructuredCV, company: str, job_title: str) -> str:
         cleaned = re.sub(r"[^\w]+", "_", value or "", flags=re.UNICODE).strip("_")
         return cleaned[:_PART_MAX].strip("_") or fallback
 
-    return "_".join(
-        [part(cv.name, "CV"), part(company, "Company"), part(job_title, "Position")]
-    ) + ".pdf"
-
-
-def _md_lines(value: str) -> str:
-    """Keep the line breaks of a multi-line description in Markdown."""
-    return "  \n".join(line for line in value.splitlines() if line.strip())
+    return "_".join([part(cv.name, "CV"), part(company, "Company"), part(job_title, "Position")]) + ".pdf"
 
 
 def _first_and_rest(value: str) -> tuple[str, list[str]]:
     lines = [line for line in value.splitlines() if line.strip()]
     return (lines[0], lines[1:]) if lines else ("", [])
-
-
-def render_markdown(cv: StructuredCV) -> str:
-    """Preview text for the UI; same content and order as the PDF."""
-    lines: list[str] = []
-    if cv.name:
-        lines.append(f"# {cv.name}")
-    contact = _join(cv.email, cv.phone, cv.location, *cv.links)
-    if contact:
-        lines.append(contact)
-    if cv.summary:
-        lines += ["", "## Summary", cv.summary]
-    if cv.experiences:
-        lines += ["", "## Experience"]
-        for exp in cv.experiences:
-            lines.append("")
-            lines.append(f"**{_join(exp.title, exp.employer, sep=' — ')}**")
-            meta = _join(_dates(exp.start, exp.end), exp.location)
-            if meta:
-                lines.append(f"*{meta}*")
-            lines += [f"- {b.text}" for b in exp.bullets]
-    if cv.projects:
-        lines += ["", "## Projects"]
-        for proj in cv.projects:
-            lines += ["", f"**{proj.name}**"]
-            if proj.description:
-                lines.append(_md_lines(proj.description))
-    if cv.education:
-        lines += ["", "## Education"]
-        for edu in cv.education:
-            dates = _dates(edu.start, edu.end)
-            lines.append(
-                f"- **{_join(edu.degree, edu.school, sep=' — ')}**"
-                + (f" ({dates})" if dates else "")
-            )
-            if edu.details:
-                lines.append("  " + _md_lines(edu.details).replace("  \n", "  \n  "))
-    if cv.certifications:
-        lines += ["", "## Certifications"]
-        for cert in cv.certifications:
-            lines.append("- " + _join(cert.name, cert.issuer, cert.date, sep=" — "))
-    if cv.skills:
-        lines += ["", "## Skills", ", ".join(cv.skills)]
-    if cv.languages:
-        lines += ["", "## Languages", ", ".join(cv.languages)]
-    return "\n".join(lines)
 
 
 def render_pdf(cv: StructuredCV) -> bytes:
@@ -107,13 +54,24 @@ def render_pdf(cv: StructuredCV) -> bytes:
         pdf.set_author(cv.name)
     pdf.add_page()
 
-    def text(value: str, size: float = 10, bold: bool = False, indent: float = 0,
-             height: float = 5.2, after: float = 0, border: str = "0") -> None:
+    def text(
+        value: str,
+        size: float = 10,
+        bold: bool = False,
+        indent: float = 0,
+        height: float = 5.2,
+        after: float = 0,
+        border: str = "0",
+    ) -> None:
         pdf.set_font("DejaVu", "B" if bold else "", size)
         pdf.set_x(pdf.l_margin + indent)
         pdf.multi_cell(
-            pdf.epw - indent, height, value,
-            border=border, new_x="LMARGIN", new_y="NEXT",
+            pdf.epw - indent,
+            height,
+            value,
+            border=border,
+            new_x="LMARGIN",
+            new_y="NEXT",
         )
         if after:
             pdf.ln(after)

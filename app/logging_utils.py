@@ -34,22 +34,16 @@ def log_event(logger: logging.Logger, level: int, event: str, **fields: object) 
     if job is not None:
         parts.append(f"job={_format_value(job)}")
 
-    parts.extend(
-        f"{key}={_format_value(value)}"
-        for key, value in fields.items()
-        if value is not None
-    )
+    parts.extend(f"{key}={_format_value(value)}" for key, value in fields.items() if value is not None)
     logger.log(level, " ".join(parts), extra={"request_id": request_id, "event": event})
 
 
 def configure_logging() -> None:
     """Send `app.*` logs to stderr at INFO (override with LOG_LEVEL). Idempotent."""
     logger = logging.getLogger("app")
-    if not any(getattr(h, "_cv_coach", False) for h in logger.handlers):
+    if not any(h.get_name() == "cv_coach" for h in logger.handlers):
         handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
-        )
-        handler._cv_coach = True  # type: ignore[attr-defined]
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+        handler.set_name("cv_coach")
         logger.addHandler(handler)
     logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())

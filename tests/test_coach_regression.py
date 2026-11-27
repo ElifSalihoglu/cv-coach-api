@@ -1,5 +1,5 @@
 """
-Regression net for the IT Career Coach, written before the multi-agent refactor.
+Regression net for the IT agent: its prompt, model input, call count and validation behaviour.
 
 It pins, with a fake model and no API call:
 - the exact model input (hash of the payload; the full payload for one scenario),
@@ -10,29 +10,46 @@ It pins, with a fake model and no API call:
 - the answers of the claim checks (`faithfulness_problems`, `unsupported_design_claims`,
   `offers_choice`, `skill_like_terms`).
 
-The expected values live in tests/golden/coach_regression.json and were produced by the
-code as it was BEFORE the refactor. If this test fails, behaviour changed. Only when the
-change is intended: `python -m tests.test_coach_regression --write`, and say so in review.
+The expected values live in tests/golden/coach_regression.json. If this test fails, behaviour
+changed. Regenerate only for an intended change: `python -m tests.test_coach_regression --write`.
 """
+
 import asyncio
 import hashlib
 import json
 import sys
 from pathlib import Path
 
-from tests.fixtures.coach_fixture import (
-    CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, CV, JOB_DESCRIPTION, JOB_TITLE,
-)
-from app.models.coaching import (
-    CoachModelOutput, ModelEvidence, ModelQuestion, ModelRequirement, ModelSuggestion, ModelTrack,
-)
 from app.careers.agents.it import IT_AGENT
 from app.careers.agents.it.rules import offers_choice, unsupported_design_claims
-from app.careers.core.state import CareerCase
 from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.core.state import CareerCase
+from app.models.coaching import (
+    CoachModelOutput,
+    ModelEvidence,
+    ModelQuestion,
+    ModelRequirement,
+    ModelSuggestion,
+    ModelTrack,
+)
+from tests.fixtures.coach_fixture import (
+    CLEAR_JOB_DESCRIPTION,
+    CLEAR_JOB_TITLE,
+    CV,
+    JOB_DESCRIPTION,
+    JOB_TITLE,
+)
 from tests.fixtures.coach_scenarios import (
-    AI_SUMMARY, PY_SUMMARY, Q_AI, Q_API, Q_PREF_K8S, Q_PREF_PG, Q_PY, Q_REQ,
-    ai_output, python_output, tracks_output,
+    AI_SUMMARY,
+    Q_AI,
+    Q_API,
+    Q_PREF_K8S,
+    Q_PREF_PG,
+    Q_PY,
+    Q_REQ,
+    ai_output,
+    python_output,
+    tracks_output,
 )
 
 GOLDEN = Path(__file__).parent / "golden" / "coach_regression.json"
@@ -55,8 +72,15 @@ def _suggestions(*items: ModelSuggestion, questions=()) -> CoachModelOutput:
 
 
 def _s(**over) -> ModelSuggestion:
-    base = dict(kind="promote", requirement_quote=Q_AI, level="required", source_ids=["exp1.b4"],
-                support="related", priority=1, rationale="r")
+    base = dict(
+        kind="promote",
+        requirement_quote=Q_AI,
+        level="required",
+        source_ids=["exp1.b4"],
+        support="related",
+        priority=1,
+        rationale="r",
+    )
     return ModelSuggestion(**{**base, **over})
 
 
@@ -68,14 +92,27 @@ Q_CLEAR_MONITOR = "Design workflows with queues, retries and monitoring"
 def _clear_output() -> CoachModelOutput:
     """An answer for the one-focus posting (its quotes are really in that posting)."""
     return CoachModelOutput(
-        mode="suggestions", focus="AI Automation",
+        mode="suggestions",
+        focus="AI Automation",
         responsibilities=["Build agents that classify documents"],
         requirements=[ModelRequirement(text="Ship LLM features", quote=Q_CLEAR_SHIP, level="required")],
         suggestions=[
-            _s(kind="promote", source_ids=["exp2.b4"], requirement_quote=Q_CLEAR_WEBHOOKS, priority=1,
-               rationale="Related: integration work."),
-            _s(kind="summary", source_ids=["exp1.b1"], requirement_quote=Q_CLEAR_SHIP, support="direct",
-               after=AI_SUMMARY, priority=2, rationale="Leads with the production agent."),
+            _s(
+                kind="promote",
+                source_ids=["exp2.b4"],
+                requirement_quote=Q_CLEAR_WEBHOOKS,
+                priority=1,
+                rationale="Related: integration work.",
+            ),
+            _s(
+                kind="summary",
+                source_ids=["exp1.b1"],
+                requirement_quote=Q_CLEAR_SHIP,
+                support="direct",
+                after=AI_SUMMARY,
+                priority=2,
+                rationale="Leads with the production agent.",
+            ),
         ],
         questions=[ModelQuestion(requirement_quote=Q_CLEAR_MONITOR, level="required", term="monitoring")],
     )
@@ -88,63 +125,161 @@ def _gate_scenarios() -> dict[str, tuple[CoachModelOutput, str]]:
         "source_not_in_cv": (_suggestions(_s(source_ids=["exp9.b1"])), "AI"),
         "generic_requirement": (_suggestions(_s(requirement_quote=Q_REQ)), "AI"),
         "already_first": (_suggestions(_s(source_ids=["exp1.b1"])), "AI"),
-        "rewrite_not_substantive": (_suggestions(_s(
-            kind="rewrite", source_ids=["exp2.b1"], requirement_quote=Q_PY,
-            after="Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week now.")), "Python"),
-        "rewrite_ok": (_suggestions(_s(
-            kind="rewrite", source_ids=["exp2.b4"], requirement_quote=Q_API,
-            after="Integrated third-party APIs and webhooks into internal tools used by the operations team every week.")), "Python"),
-        "rewrite_unsupported_claim": (_suggestions(_s(
-            kind="rewrite", source_ids=["exp2.b4"], requirement_quote=Q_API,
-            after="Integrated third-party APIs and webhooks on Kubernetes, cutting incidents by 40%.")), "Python"),
-        "summary_ok": (_suggestions(_s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY)), "AI"),
+        "rewrite_not_substantive": (
+            _suggestions(
+                _s(
+                    kind="rewrite",
+                    source_ids=["exp2.b1"],
+                    requirement_quote=Q_PY,
+                    after=(
+                        "Automated nightly ETL pipelines in Python and Airflow, "
+                        "saving about 20 engineer-hours per week now."
+                    ),
+                )
+            ),
+            "Python",
+        ),
+        "rewrite_ok": (
+            _suggestions(
+                _s(
+                    kind="rewrite",
+                    source_ids=["exp2.b4"],
+                    requirement_quote=Q_API,
+                    after=(
+                        "Integrated third-party APIs and webhooks into internal tools "
+                        "used by the operations team every week."
+                    ),
+                )
+            ),
+            "Python",
+        ),
+        "rewrite_unsupported_claim": (
+            _suggestions(
+                _s(
+                    kind="rewrite",
+                    source_ids=["exp2.b4"],
+                    requirement_quote=Q_API,
+                    after="Integrated third-party APIs and webhooks on Kubernetes, cutting incidents by 40%.",
+                )
+            ),
+            "Python",
+        ),
+        "summary_ok": (
+            _suggestions(_s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY)),
+            "AI",
+        ),
         "summary_same_as_cv": (_suggestions(_s(kind="summary", source_ids=["exp1.b1"], after=CV.summary)), "AI"),
-        "summary_unsupported_claim": (_suggestions(_s(
-            kind="summary", source_ids=["exp1.b1"],
-            after="Engineer who runs LLM agents on Kubernetes for 12,000 documents per month.")), "AI"),
-        "summary_unsupported_action": (_suggestions(_s(
-            kind="summary", source_ids=["exp2.b4"], requirement_quote=Q_API,
-            after="Engineer who designed REST APIs for partner webhooks and integrated third-party tools.")), "Python"),
-        "requirement_quote_not_in_posting": (CoachModelOutput(
-            mode="suggestions", requirements=[
-                ModelRequirement(text="Rust", quote="Rust experience required", level="required"),
-                ModelRequirement(text="PostgreSQL", quote=Q_PREF_PG, level="preferred"),
-                ModelRequirement(text="", quote=Q_PREF_PG, level="preferred")],
-            responsibilities=["a", " ", "b"]), "AI"),
+        "summary_unsupported_claim": (
+            _suggestions(
+                _s(
+                    kind="summary",
+                    source_ids=["exp1.b1"],
+                    after="Engineer who runs LLM agents on Kubernetes for 12,000 documents per month.",
+                )
+            ),
+            "AI",
+        ),
+        "summary_unsupported_action": (
+            _suggestions(
+                _s(
+                    kind="summary",
+                    source_ids=["exp2.b4"],
+                    requirement_quote=Q_API,
+                    after="Engineer who designed REST APIs for partner webhooks and integrated third-party tools.",
+                )
+            ),
+            "Python",
+        ),
+        "requirement_quote_not_in_posting": (
+            CoachModelOutput(
+                mode="suggestions",
+                requirements=[
+                    ModelRequirement(text="Rust", quote="Rust experience required", level="required"),
+                    ModelRequirement(text="PostgreSQL", quote=Q_PREF_PG, level="preferred"),
+                    ModelRequirement(text="", quote=Q_PREF_PG, level="preferred"),
+                ],
+                responsibilities=["a", " ", "b"],
+            ),
+            "AI",
+        ),
         "unknown_kind": (_suggestions(_s(kind="delete")), "AI"),
-        "over_limit_and_duplicates": (_suggestions(
-            _s(source_ids=["exp1.b2"], priority=1), _s(source_ids=["exp1.b3"], priority=2),
-            _s(source_ids=["exp1.b4"], priority=3), _s(source_ids=["exp1.b5"], priority=4),
-            _s(source_ids=["exp1.b2"], priority=5),
-            _s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY, priority=6),
-            _s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY + " More.", priority=7),
-        ), "AI"),
-        "direct_claim_without_support": (_suggestions(_s(
-            kind="promote", source_ids=["exp2.b4"], requirement_quote=Q_API, support="direct",
-            rationale="The bullet directly shows REST API design.")), "Python"),
-        "priority_order": (_suggestions(
-            _s(source_ids=["exp1.b2"], priority=0), _s(source_ids=["exp1.b3"], priority=2),
-            _s(source_ids=["exp1.b4"], priority=1)), "AI"),
-        "questions": (_suggestions(questions=[
-            ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Kubernetes"),
-            ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="kubernetes"),
-            ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Terraform"),
-            ModelQuestion(requirement_quote=Q_PREF_PG, level="preferred", term="PostgreSQL"),
-            ModelQuestion(requirement_quote=Q_PREF_PG, level="preferred", term="Go"),
-            ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Python"),
-        ]), "AI"),
-        "tracks_edge_cases": (CoachModelOutput(mode="choose_focus", tracks=[
-            ModelTrack(name="Python", quote=Q_PY, summary="s",
-                       evidence=[ModelEvidence(source_id="exp2.b1", why="w"),
-                                 ModelEvidence(source_id="exp2.b1", why="again"),
-                                 ModelEvidence(source_id="exp8.b1", why="missing")]),
-            ModelTrack(name="python", quote=Q_PY, summary="duplicate name"),
-            ModelTrack(name="AI", quote=Q_AI, summary="s", evidence=[ModelEvidence(source_id="exp1.b1", why="w")]),
-            ModelTrack(name="Quantum", quote="build quantum computers", summary="not in the posting"),
-        ]), ""),
-        "single_track_falls_back_to_suggestions": (CoachModelOutput(
-            mode="choose_focus", focus="Python", tracks=[ModelTrack(name="Python", quote=Q_PY, summary="s")],
-            suggestions=[_s(source_ids=["exp2.b2"], requirement_quote=Q_PY)]), ""),
+        "over_limit_and_duplicates": (
+            _suggestions(
+                _s(source_ids=["exp1.b2"], priority=1),
+                _s(source_ids=["exp1.b3"], priority=2),
+                _s(source_ids=["exp1.b4"], priority=3),
+                _s(source_ids=["exp1.b5"], priority=4),
+                _s(source_ids=["exp1.b2"], priority=5),
+                _s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY, priority=6),
+                _s(kind="summary", source_ids=["exp1.b1"], support="direct", after=AI_SUMMARY + " More.", priority=7),
+            ),
+            "AI",
+        ),
+        "direct_claim_without_support": (
+            _suggestions(
+                _s(
+                    kind="promote",
+                    source_ids=["exp2.b4"],
+                    requirement_quote=Q_API,
+                    support="direct",
+                    rationale="The bullet directly shows REST API design.",
+                )
+            ),
+            "Python",
+        ),
+        "priority_order": (
+            _suggestions(
+                _s(source_ids=["exp1.b2"], priority=0),
+                _s(source_ids=["exp1.b3"], priority=2),
+                _s(source_ids=["exp1.b4"], priority=1),
+            ),
+            "AI",
+        ),
+        "questions": (
+            _suggestions(
+                questions=[
+                    ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Kubernetes"),
+                    ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="kubernetes"),
+                    ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Terraform"),
+                    ModelQuestion(requirement_quote=Q_PREF_PG, level="preferred", term="PostgreSQL"),
+                    ModelQuestion(requirement_quote=Q_PREF_PG, level="preferred", term="Go"),
+                    ModelQuestion(requirement_quote=Q_PREF_K8S, level="preferred", term="Python"),
+                ]
+            ),
+            "AI",
+        ),
+        "tracks_edge_cases": (
+            CoachModelOutput(
+                mode="choose_focus",
+                tracks=[
+                    ModelTrack(
+                        name="Python",
+                        quote=Q_PY,
+                        summary="s",
+                        evidence=[
+                            ModelEvidence(source_id="exp2.b1", why="w"),
+                            ModelEvidence(source_id="exp2.b1", why="again"),
+                            ModelEvidence(source_id="exp8.b1", why="missing"),
+                        ],
+                    ),
+                    ModelTrack(name="python", quote=Q_PY, summary="duplicate name"),
+                    ModelTrack(
+                        name="AI", quote=Q_AI, summary="s", evidence=[ModelEvidence(source_id="exp1.b1", why="w")]
+                    ),
+                    ModelTrack(name="Quantum", quote="build quantum computers", summary="not in the posting"),
+                ],
+            ),
+            "",
+        ),
+        "single_track_falls_back_to_suggestions": (
+            CoachModelOutput(
+                mode="choose_focus",
+                focus="Python",
+                tracks=[ModelTrack(name="Python", quote=Q_PY, summary="s")],
+                suggestions=[_s(source_ids=["exp2.b2"], requirement_quote=Q_PY)],
+            ),
+            "",
+        ),
     }
 
 
@@ -176,7 +311,13 @@ def snapshot() -> dict:
         ("flow_choice", [tracks_output()], JOB_TITLE, JOB_DESCRIPTION, ""),
         ("flow_ai", [ai_output()], JOB_TITLE, JOB_DESCRIPTION, "AI"),
         ("flow_python", [python_output()], JOB_TITLE, JOB_DESCRIPTION, "Python Backend"),
-        ("flow_clear_posting_asks_twice", [tracks_output(), _clear_output()], CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION, ""),
+        (
+            "flow_clear_posting_asks_twice",
+            [tracks_output(), _clear_output()],
+            CLEAR_JOB_TITLE,
+            CLEAR_JOB_DESCRIPTION,
+            "",
+        ),
         ("flow_clear_posting_direct", [_clear_output()], CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION, ""),
     ]:
         llm, result = _run(outputs, title, description, focus)
@@ -198,8 +339,7 @@ def snapshot() -> dict:
     snap["claims"] = {
         "job_terms": sorted(job_terms),
         "problems": [
-            [[p.kind, list(p.terms)] for p in faithfulness_problems(t, cv_source_text(CV), job_terms)]
-            for t in samples
+            [[p.kind, list(p.terms)] for p in faithfulness_problems(t, cv_source_text(CV), job_terms)] for t in samples
         ],
         "design": [unsupported_design_claims(t, CV) for t in samples],
         "offers_choice": [offers_choice(JOB_DESCRIPTION), offers_choice(CLEAR_JOB_DESCRIPTION), offers_choice("")],
@@ -207,7 +347,7 @@ def snapshot() -> dict:
     return snap
 
 
-def test_the_it_coach_behaves_exactly_as_before_the_refactor():
+def test_the_it_agent_matches_the_golden_snapshot():
     expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
     actual = json.loads(json.dumps(snapshot()))
     assert sorted(actual) == sorted(expected), "scenario set changed"
@@ -223,11 +363,22 @@ def test_the_scenarios_really_exercise_every_gate():
         if "result" in record:
             seen |= set(record["result"]["dropped_reasons"])
     assert seen >= {
-        "requirement_quote_not_in_posting", "track_not_in_posting", "evidence_not_in_cv",
-        "quote_not_in_posting", "source_not_in_cv", "generic_requirement", "already_first",
-        "rewrite_not_substantive", "rewrite_unsupported_claim", "summary_not_new",
-        "summary_unsupported_claim", "summary_unsupported_action", "unknown_kind",
-        "over_limit_or_duplicate", "question_not_grounded", "too_many_questions",
+        "requirement_quote_not_in_posting",
+        "track_not_in_posting",
+        "evidence_not_in_cv",
+        "quote_not_in_posting",
+        "source_not_in_cv",
+        "generic_requirement",
+        "already_first",
+        "rewrite_not_substantive",
+        "rewrite_unsupported_claim",
+        "summary_not_new",
+        "summary_unsupported_claim",
+        "summary_unsupported_action",
+        "unknown_kind",
+        "over_limit_or_duplicate",
+        "question_not_grounded",
+        "too_many_questions",
     }
 
 

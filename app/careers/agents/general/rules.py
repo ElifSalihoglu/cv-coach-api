@@ -2,6 +2,7 @@
 Rules of the General Career Agent. None of them is about software: they are about what any
 profession must not have invented for it, above all qualifications.
 """
+
 import re
 
 from app.careers.core.claims import ClaimLexicon, skill_like_terms
@@ -36,7 +37,7 @@ _YEARS = re.compile(r"\b\d+\s*\+?\s*(?:years?|yıl|yil)\b|\b(?:minimum|at least)
 
 
 def is_years_requirement(quote: str) -> bool:
-    """"5+ years" is a condition a single CV line cannot show, so no card is aimed at it."""
+    """ "5+ years" is a condition a single CV line cannot show, so no card is aimed at it."""
     return bool(_YEARS.search(quote))
 
 

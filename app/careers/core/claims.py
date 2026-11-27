@@ -1,12 +1,11 @@
 """
-Claim checks shared by every feature that lets a model write CV text: what a draft says
-(new numbers, new seniority words, new skills) that the source does not back up.
+Claim checks: what a draft says (new numbers, new seniority words, new skills) that the source
+does not back up. Shared by the agents and the apply step.
 
-The word lists behind them live in a `ClaimLexicon`, so a domain can bring its own. The
-default lexicon is language-level (English and Turkish seniority words, typographic
-skill detection), not IT-specific. It is what the coach, the tailoring step and the
-apply step all used before the coach was split into domain agents.
+The word lists live in a `ClaimLexicon`, so a domain can bring its own. The default lexicon is
+language-level (English and Turkish seniority words, typographic skill detection), not IT-specific.
 """
+
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Literal
@@ -99,8 +98,7 @@ def faithfulness_problems(
 
     source_seniority = {norm(m.group()) for m in lexicon.seniority.finditer(source)}
     seniority = {
-        norm(m.group()): m.group() for m in lexicon.seniority.finditer(text)
-        if norm(m.group()) not in source_seniority
+        norm(m.group()): m.group() for m in lexicon.seniority.finditer(text) if norm(m.group()) not in source_seniority
     }
     if seniority:
         problems.append(Problem("seniority", tuple(sorted(seniority.values(), key=str.casefold))))
@@ -108,9 +106,12 @@ def faithfulness_problems(
     spelled = {stem(m.group()): m.group() for m in _WORD.finditer(text or "")}
     new_skills = (tokens(text) & job_terms) - tokens(source)
     if new_skills:
-        problems.append(Problem(
-            "skills", tuple(sorted((spelled.get(t, t) for t in new_skills), key=str.casefold)),
-        ))
+        problems.append(
+            Problem(
+                "skills",
+                tuple(sorted((spelled.get(t, t) for t in new_skills), key=str.casefold)),
+            )
+        )
     return problems
 
 

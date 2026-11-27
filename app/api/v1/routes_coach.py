@@ -3,6 +3,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.dependencies import get_llm_client, llm_http_error
+from app.careers.assembly import build_orchestrator
+from app.careers.core.state import CareerCase, CoachResponse, OrchestrationError
+from app.careers.orchestrator import CareerOrchestrator
+from app.careers.registry import UnknownDomainError
 from app.models.coaching import (
     ApplyRequest,
     ApplyResult,
@@ -10,18 +15,8 @@ from app.models.coaching import (
     CheckResult,
     CoachRequest,
 )
-from app.careers.assembly import build_orchestrator
-from app.careers.core.state import CareerCase, CoachResponse, OrchestrationError
-from app.careers.orchestrator import CareerOrchestrator
-from app.careers.registry import UnknownDomainError
 from app.services.coach_apply import DecisionError, UnconfirmedClaims, apply_decisions, check_text
-from app.services.llm_client import (
-    LLMClient,
-    LLMOutputError,
-    LLMTimeoutError,
-    LLMUnavailableError,
-)
-from app.services.openai_setup import create_openai_client, get_openai_model
+from app.services.llm_client import LLMOutputError, LLMTimeoutError, LLMUnavailableError
 
 router = APIRouter(prefix="/v1/coach")
 
@@ -29,10 +24,8 @@ router = APIRouter(prefix="/v1/coach")
 @lru_cache
 def get_orchestrator() -> CareerOrchestrator | None:
     """Build the orchestrator once; return None when no API key is configured."""
-    openai_client = create_openai_client()
-    if openai_client is None:
-        return None
-    return build_orchestrator(LLMClient(openai_client=openai_client, model=get_openai_model()))
+    llm = get_llm_client()
+    return build_orchestrator(llm) if llm is not None else None
 
 
 def _decision_error(exc: DecisionError) -> HTTPException:
@@ -56,22 +49,27 @@ async def analyze(
         raise HTTPException(status_code=503, detail="The career coach is unavailable.")
     try:
         case = CareerCase(
-            request.cv, request.job_title, request.job_description, request.focus.strip(),
-            domain_override=request.domain.strip(), career_goal=request.career_goal.strip(),
+            request.cv,
+            request.job_title,
+            request.job_description,
+            request.focus.strip(),
+            domain_override=request.domain.strip(),
+            career_goal=request.career_goal.strip(),
         )
         return (await orchestrator.run(case)).response()
     except UnknownDomainError as exc:
-        raise HTTPException(status_code=422, detail={
-            "code": exc.code, "message": str(exc), "available": exc.available,
-        }) from exc
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": exc.code,
+                "message": str(exc),
+                "available": exc.available,
+            },
+        ) from exc
     except OrchestrationError as exc:
         raise HTTPException(status_code=500, detail="The career coach could not produce a result.") from exc
-    except LLMTimeoutError as exc:
-        raise HTTPException(status_code=504, detail=str(exc)) from exc
-    except LLMUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except LLMOutputError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except (LLMTimeoutError, LLMUnavailableError, LLMOutputError) as exc:
+        raise llm_http_error(exc) from exc
 
 
 @router.post("/check", response_model=CheckResult)

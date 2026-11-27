@@ -5,10 +5,13 @@ from app.models.cv_document import (
     CVCertification,
     CVEducation,
     CVExperience,
+    CVParseResponse,
     CVProject,
     ParsedCV,
     StructuredCV,
 )
+from app.prompts.cv_parse import PARSE_CV_SYSTEM_PROMPT
+from app.services.llm_client import ContentGenerator
 
 _BULLET_PREFIX = re.compile(r"^[\s\-•*·–—▪●◦]+")
 
@@ -31,16 +34,16 @@ def assign_ids(parsed: ParsedCV) -> StructuredCV:
                 start=exp.start,
                 end=exp.end,
                 location=exp.location,
-                bullets=[
-                    CVBullet(id=f"{exp_id}.b{j}", text=text)
-                    for j, text in enumerate(exp.bullets, start=1)
-                ],
+                bullets=[CVBullet(id=f"{exp_id}.b{j}", text=text) for j, text in enumerate(exp.bullets, start=1)],
             )
         )
     education = [
         CVEducation(
             id=f"edu{i}",
-            school=e.school, degree=e.degree, start=e.start, end=e.end,
+            school=e.school,
+            degree=e.degree,
+            start=e.start,
+            end=e.end,
             details=e.details,
         )
         for i, e in enumerate(parsed.education, start=1)
@@ -100,9 +103,7 @@ def check_against_text(cv: StructuredCV, source_text: str) -> list[str]:
         for bullet in exp.bullets:
             text = _BULLET_PREFIX.sub("", bullet.text)
             if not_in_text(text):
-                warnings.append(
-                    f"{bullet.id} (under {name}): bullet text differs from the CV text."
-                )
+                warnings.append(f"{bullet.id} (under {name}): bullet text differs from the CV text.")
 
     for edu in cv.education:
         for field in ("school", "degree", "start", "end"):
@@ -122,3 +123,14 @@ def check_against_text(cv: StructuredCV, source_text: str) -> list[str]:
     for item in (*cv.skills, *cv.languages):
         check("skill/language", item)
     return warnings
+
+
+async def parse_cv_text(llm: ContentGenerator, cv_text: str) -> CVParseResponse:
+    """One model call per uploaded CV; the user reviews the result before it is used."""
+    parsed = await llm.generate(
+        system_prompt=PARSE_CV_SYSTEM_PROMPT,
+        user_content={"cv_text": cv_text},
+        output_model=ParsedCV,
+    )
+    cv = assign_ids(parsed)
+    return CVParseResponse(cv=cv, warnings=check_against_text(cv, cv_text))

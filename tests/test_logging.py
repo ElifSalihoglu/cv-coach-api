@@ -8,12 +8,11 @@ import openai
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1.routes_cv import get_cv_coach
+from app.api.dependencies import get_llm_client
 from app.api.v1.routes_jobs import get_job_search
 from app.logging_utils import log_event
 from app.main import app
 from app.models.cv_document import ParsedCV
-from app.services.cv_coach import OpenAICVCoach
 from app.services.llm_client import LLMClient, LLMError
 
 SECRET_CV = "ZXQ-UNIQUE-CV-PHRASE built a secret rocket guidance system"
@@ -27,14 +26,19 @@ MODEL_OUTPUT = {
     "summary": "ZXQ-UNIQUE-MODEL-OUTPUT summary",
 }
 SECRETS = [
-    SECRET_CV, SECRET_QUERY, SECRET_JOB_TEXT, SECRET_COMPANY,
-    "ZXQ-UNIQUE-MODEL-OUTPUT", "jk=", "https://", "sk-test-key",
+    SECRET_CV,
+    SECRET_QUERY,
+    SECRET_JOB_TEXT,
+    SECRET_COMPANY,
+    "ZXQ-UNIQUE-MODEL-OUTPUT",
+    "jk=",
+    "https://",
+    "sk-test-key",
 ]
 
 
 class FakeCompletions:
-    def __init__(self, content=None, refusal=None, error=None, usage=None,
-                 finish_reason=None, served_model=None):
+    def __init__(self, content=None, refusal=None, error=None, usage=None, finish_reason=None, served_model=None):
         self.content, self.refusal, self.error, self.usage = content, refusal, error, usage
         self.finish_reason, self.served_model = finish_reason, served_model
 
@@ -75,27 +79,32 @@ def test_a_search_request_logs_one_request_id_and_one_line_per_stage(caplog, mon
     caplog.set_level(logging.INFO, logger="app")
     search_results = [
         {
-            "title": "RAG Engineer", "company": SECRET_COMPANY, "location": "Berlin",
+            "title": "RAG Engineer",
+            "company": SECRET_COMPANY,
+            "location": "Berlin",
             "url": "https://de.indeed.com/viewjob?jk=aaa",
-            "full_description": SECRET_JOB_TEXT, "detail_duration_ms": 1200,
+            "full_description": SECRET_JOB_TEXT,
+            "detail_duration_ms": 1200,
         },
         {
-            "title": "Vision Engineer", "company": "Beta", "location": "Berlin",
+            "title": "Vision Engineer",
+            "company": "Beta",
+            "location": "Berlin",
             "url": "https://de.indeed.com/viewjob?jk=bbb",
-            "full_description": "", "detail_duration_ms": 10050,
+            "full_description": "",
+            "detail_duration_ms": 10050,
             "detail_error": "description_empty",
         },
         {"title": "", "company": "", "location": "", "url": "", "full_description": ""},
     ]
     monkeypatch.setitem(
-        app.dependency_overrides, get_job_search,
-        lambda: (lambda query, city, country, limit: search_results),
+        app.dependency_overrides,
+        get_job_search,
+        lambda: lambda query, city, country, limit: search_results,
     )
 
     with TestClient(app) as client:
-        response = client.post(
-            "/v1/jobs/search", json={"query": SECRET_QUERY, "city": "Berlin", "limit": 5}
-        )
+        response = client.post("/v1/jobs/search", json={"query": SECRET_QUERY, "city": "Berlin", "limit": 5})
 
     assert response.status_code == 200
     records = app_records(caplog)
@@ -109,16 +118,22 @@ def test_a_search_request_logs_one_request_id_and_one_line_per_stage(caplog, mon
     assert "endpoint=/v1/jobs/search" in start and "max_jobs=5" in start
 
     search = by_event(caplog, "job_search")[0].getMessage()
-    for expected in ("source=indeed", "outcome=ok", "cards=3", "skipped_no_url=1",
-                     "processed=2", "duration_ms=", "detail_ms=11250"):
+    for expected in (
+        "source=indeed",
+        "outcome=ok",
+        "cards=3",
+        "skipped_no_url=1",
+        "processed=2",
+        "duration_ms=",
+        "detail_ms=11250",
+    ):
         assert expected in search
 
     # the problem job is distinguishable by position, stage and reason
     problems = [r for r in by_event(caplog, "job_detail") if r.levelno == logging.WARNING]
     assert len(problems) == 1
     problem = problems[0].getMessage()
-    for expected in ("job=2", "stage=detail", "outcome=failed",
-                     "reason=description_empty", "duration_ms=10050"):
+    for expected in ("job=2", "stage=detail", "outcome=failed", "reason=description_empty", "duration_ms=10050"):
         assert expected in problem
     ok_detail = [r for r in by_event(caplog, "job_detail") if r.levelno == logging.INFO][0]
     assert "job=1" in ok_detail.getMessage()
@@ -174,17 +189,29 @@ def test_zero_results_and_scraper_error_are_distinguishable(caplog, monkeypatch)
 def test_detail_page_not_opened_is_told_apart_from_empty_description(caplog, monkeypatch):
     caplog.set_level(logging.INFO, logger="app")
     results = [
-        {"title": "A", "company": "x", "location": "y", "url": "https://de.indeed.com/viewjob?jk=a",
-         "full_description": "", "detail_error": "detail_open_failed", "detail_duration_ms": 10000},
-        {"title": "B", "company": "x", "location": "y", "url": "https://de.indeed.com/viewjob?jk=b",
-         "full_description": "", "detail_error": "description_empty", "detail_duration_ms": 10000},
+        {
+            "title": "A",
+            "company": "x",
+            "location": "y",
+            "url": "https://de.indeed.com/viewjob?jk=a",
+            "full_description": "",
+            "detail_error": "detail_open_failed",
+            "detail_duration_ms": 10000,
+        },
+        {
+            "title": "B",
+            "company": "x",
+            "location": "y",
+            "url": "https://de.indeed.com/viewjob?jk=b",
+            "full_description": "",
+            "detail_error": "description_empty",
+            "detail_duration_ms": 10000,
+        },
     ]
 
     _search_with(monkeypatch, lambda q, c, k, n: results)
 
-    reasons = [
-        r.getMessage() for r in by_event(caplog, "job_detail") if r.levelno == logging.WARNING
-    ]
+    reasons = [r.getMessage() for r in by_event(caplog, "job_detail") if r.levelno == logging.WARNING]
     assert "job=1" in reasons[0] and "reason=detail_open_failed" in reasons[0]
     assert "job=2" in reasons[1] and "reason=description_empty" in reasons[1]
 
@@ -241,8 +268,13 @@ def test_llm_call_logs_start_and_enriched_result_without_content(caplog):
     assert "model=gpt-test" in start and "temperature=0.3" in start
     assert "input_chars=" in start
     done = by_event(caplog, "llm_call")[0].getMessage()
-    for expected in ("outcome=ok", "tokens_in=412", "tokens_out=96", "finish_reason=stop",
-                     "served_model=gpt-test-2026-01-01"):
+    for expected in (
+        "outcome=ok",
+        "tokens_in=412",
+        "tokens_out=96",
+        "finish_reason=stop",
+        "served_model=gpt-test-2026-01-01",
+    ):
         assert expected in done
     assert "ZXQ-UNIQUE" not in caplog.text
 
@@ -268,8 +300,8 @@ def test_llm_success_without_usage_logs_no_token_fields(caplog):
 
 def test_the_parse_endpoint_logs_the_llm_call_under_the_request_id_without_content(caplog, monkeypatch):
     caplog.set_level(logging.INFO, logger="app")
-    coach = OpenAICVCoach(LLMClient(good_openai(), model="gpt-test"))
-    monkeypatch.setitem(app.dependency_overrides, get_cv_coach, lambda: coach)
+    llm = LLMClient(good_openai(), model="gpt-test")
+    monkeypatch.setitem(app.dependency_overrides, get_llm_client, lambda: llm)
 
     with TestClient(app) as client:
         response = client.post("/v1/cv/parse", json={"cv_text": SECRET_CV})
@@ -289,9 +321,14 @@ def test_log_event_redacts_free_text_values(caplog):
     caplog.set_level(logging.INFO, logger="app")
 
     log_event(
-        logging.getLogger("app.test"), logging.INFO, "probe",
-        safe="gpt-4.1-mini", free_text="my secret cv text", url="https://a.b/c?jk=1",
-        count=3, none_value=None,
+        logging.getLogger("app.test"),
+        logging.INFO,
+        "probe",
+        safe="gpt-4.1-mini",
+        free_text="my secret cv text",
+        url="https://a.b/c?jk=1",
+        count=3,
+        none_value=None,
     )
 
     message = caplog.records[-1].getMessage()

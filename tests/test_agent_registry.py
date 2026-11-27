@@ -1,13 +1,18 @@
 """AgentRegistry (specialists only): registering, discovering and refusing bad agents. No model involved."""
+
 import pytest
 
 from app.careers.agents.general import GENERAL_AGENT, GENERAL_CARD
 from app.careers.agents.it import IT_AGENT
-from app.careers.registry import (
-    AgentRegistry, DuplicateAgentError, InvalidAgentError, UnknownAgentError, UnknownDomainError,
-)
 from app.careers.assembly import build_default_registry, build_orchestrator
 from app.careers.orchestrator import CareerOrchestrator
+from app.careers.registry import (
+    AgentRegistry,
+    DuplicateAgentError,
+    InvalidAgentError,
+    UnknownAgentError,
+    UnknownDomainError,
+)
 from tests.toy_agents import career_agent
 
 
@@ -41,13 +46,16 @@ def test_the_orchestrator_refuses_a_registry_that_contains_it_by_id_or_by_domain
         CareerOrchestrator(AgentRegistry([career_agent("generalist", "general  career")]), GENERAL_AGENT, llm=None)
 
 
-@pytest.mark.parametrize("bad", [
-    career_agent("Legal", "Legal"),                  # id must be lowercase
-    career_agent("1legal", "Legal"),                 # must start with a letter
-    career_agent("legal", "   "),                    # a domain is required
-    career_agent("legal", "Legal", "Lawyer"),        # cues are lowercase
-    career_agent("legal", "Legal", "  "),            # no empty cue
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        career_agent("Legal", "Legal"),  # id must be lowercase
+        career_agent("1legal", "Legal"),  # must start with a letter
+        career_agent("legal", "   "),  # a domain is required
+        career_agent("legal", "Legal", "Lawyer"),  # cues are lowercase
+        career_agent("legal", "Legal", "  "),  # no empty cue
+    ],
+)
 def test_a_malformed_agent_is_refused(bad):
     with pytest.raises(InvalidAgentError):
         AgentRegistry().register(bad)

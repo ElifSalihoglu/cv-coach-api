@@ -1,9 +1,9 @@
 import openai
 from fastapi.testclient import TestClient
 
-from app.api.v1.routes_cv import get_cv_coach
+from app.api.dependencies import get_llm_client
 from app.main import app
-from app.services.cv_coach import OpenAICVCoach
+from app.services.llm_client import LLMClient
 from app.services.openai_setup import create_openai_client, get_openai_model
 
 
@@ -29,22 +29,22 @@ def test_get_openai_model_has_valid_default(monkeypatch):
     assert get_openai_model() == "gpt-4.1-mini"
 
 
-def test_get_cv_coach_builds_openai_coach_when_key_is_set(monkeypatch):
+def test_get_llm_client_builds_the_client_when_a_key_is_set(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key-not-real")
-    get_cv_coach.cache_clear()
+    get_llm_client.cache_clear()
     try:
-        assert isinstance(get_cv_coach(), OpenAICVCoach)
+        assert isinstance(get_llm_client(), LLMClient)
     finally:
-        get_cv_coach.cache_clear()
+        get_llm_client.cache_clear()
 
 
 def test_parse_returns_503_without_api_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    get_cv_coach.cache_clear()
+    get_llm_client.cache_clear()
     try:
         with TestClient(app) as client:
             response = client.post("/v1/cv/parse", json={"cv_text": "Jane Doe"})
     finally:
-        get_cv_coach.cache_clear()
+        get_llm_client.cache_clear()
 
     assert response.status_code == 503

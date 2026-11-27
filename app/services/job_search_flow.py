@@ -44,10 +44,14 @@ async def search_jobs(
         raw_results = await asyncio.to_thread(search, query, city, country, limit)
     except Exception as exc:
         log_event(
-            logger, logging.ERROR, "job_search",
-            source=source, outcome="error",
+            logger,
+            logging.ERROR,
+            "job_search",
+            source=source,
+            outcome="error",
             reason=getattr(exc, "reason_code", "scraper_error"),
-            exception=type(exc).__name__, duration_ms=_ms(started),
+            exception=type(exc).__name__,
+            duration_ms=_ms(started),
         )
         exc.already_logged = True  # tells the route not to log it a second time
         raise
@@ -55,8 +59,11 @@ async def search_jobs(
     with_url = [r for r in raw_results if r.get("url")]
     selected = with_url[:limit]
     log_event(
-        logger, logging.INFO, "job_search",
-        source=source, outcome="ok" if selected else "empty",
+        logger,
+        logging.INFO,
+        "job_search",
+        source=source,
+        outcome="ok" if selected else "empty",
         duration_ms=_ms(started),
         detail_ms=sum(int(r.get("detail_duration_ms") or 0) for r in raw_results),
         cards=len(raw_results),
@@ -84,14 +91,23 @@ async def search_jobs(
         duration = raw.get("detail_duration_ms")
         if job.status == "ready":
             log_event(
-                logger, logging.INFO, "job_detail",
-                job=order, stage="detail", outcome="ok", duration_ms=duration,
+                logger,
+                logging.INFO,
+                "job_detail",
+                job=order,
+                stage="detail",
+                outcome="ok",
+                duration_ms=duration,
                 description_chars=len(job.job_description),
             )
         else:
             log_event(
-                logger, logging.WARNING, "job_detail",
-                job=order, stage="detail", outcome="failed",
+                logger,
+                logging.WARNING,
+                "job_detail",
+                job=order,
+                stage="detail",
+                outcome="failed",
                 reason=raw.get("detail_error") or "description_empty",
                 duration_ms=duration,
             )

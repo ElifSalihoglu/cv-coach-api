@@ -16,6 +16,7 @@ The checks only cover what rules can decide; read the printed suggestions to jud
     python -m scripts.run_coach_eval              # plan only
     python -m scripts.run_coach_eval --run        # make the calls
 """
+
 import argparse
 import asyncio
 import os
@@ -30,7 +31,11 @@ from app.models.coaching import CoachResult
 from app.services.llm_client import LLMClient
 from app.services.openai_setup import REQUEST_TIMEOUT_SECONDS, get_openai_model
 from tests.fixtures.coach_fixture import (
-    CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, CV, JOB_DESCRIPTION, JOB_TITLE,
+    CLEAR_JOB_DESCRIPTION,
+    CLEAR_JOB_TITLE,
+    CV,
+    JOB_DESCRIPTION,
+    JOB_TITLE,
 )
 
 SCENARIOS = {
@@ -83,60 +88,85 @@ def quality_checks(result: CoachResult) -> list[Check]:
     source_has_number = bool(summary and any(re.search(r"\d", r.text) for r in summary.sources))
     moved = {r.id for s in result.suggestions if s.kind == "promote" for r in s.sources}
     return [
-        ("no card targets a generic condition (years, communication, ownership)",
-         not any(GENERIC_REQUIREMENT.search(s.requirement) for s in result.suggestions)),
+        (
+            "no card targets a generic condition (years, communication, ownership)",
+            not any(GENERIC_REQUIREMENT.search(s.requirement) for s in result.suggestions),
+        ),
         ("the mentoring line (exp1.b5) is not pushed up", "exp1.b5" not in moved),
         ("the summary has no buzzwords or self-labels", not (summary and BUZZWORDS.search(summary.after))),
-        ("the summary uses a figure from its source",
-         not source_has_number or bool(re.search(r"\d", summary.after))),
+        ("the summary uses a figure from its source", not source_has_number or bool(re.search(r"\d", summary.after))),
     ]
 
 
 def check_choice(result: CoachResult) -> list[Check]:
     tracks = {t.name.casefold(): t for t in result.tracks}
-    find = lambda key: next((t for name, t in tracks.items() if key in name), None)  # noqa: E731
+
+    def find(key: str):
+        return next((t for name, t in tracks.items() if key in name), None)
+
     ai, py, ts, devops = find("ai"), find("python"), find("typescript"), find("devops")
     return [
         ("asks which track (does not guess)", result.kind == "choose_focus"),
         ("all four tracks are listed", all([ai, py, ts, devops])),
         ("AI and Python are backed by evidence", bool(ai and py and ai.evidence and py.evidence)),
-        ("TypeScript and DevOps say only what is known",
-         bool(ts and devops and not ts.evidence and not devops.evidence
-              and "No explicit" in ts.note and "No explicit" in devops.note)),
+        (
+            "TypeScript and DevOps say only what is known",
+            bool(
+                ts
+                and devops
+                and not ts.evidence
+                and not devops.evidence
+                and "No explicit" in ts.note
+                and "No explicit" in devops.note
+            ),
+        ),
         ("backed tracks come first", [t.coverage for t in result.tracks][:2] != ["none", "none"]),
     ]
 
 
 def check_ai(result: CoachResult) -> list[Check]:
     summary = next((s for s in result.suggestions if s.kind == "summary"), None)
-    evaluation = [s for s in result.suggestions
-                  if "exp1.b4" in {r.id for r in s.sources} and "llm" in s.requirement.casefold()]
+    evaluation = [
+        s for s in result.suggestions if "exp1.b4" in {r.id for r in s.sources} and "llm" in s.requirement.casefold()
+    ]
     return [
         ("suggestions, not another question", result.kind == "suggestions"),
         ("the production LLM agent (exp1.b1) is brought forward", "exp1.b1" in source_ids(result)),
-        ("the summary leads with the invoice agent",
-         bool(summary and re.search(r"invoice|12,000", summary.after[:160], re.I))),
+        (
+            "the summary leads with the invoice agent",
+            bool(summary and re.search(r"invoice|12,000", summary.after[:160], re.I)),
+        ),
         ("no TypeScript/React in the text", not OTHER_TRACK_TERMS.search(text_of(result))),
         ("no Kubernetes/Terraform added to the text", not INFRA_TERMS.search(text_of(result))),
-        ("general model evaluation is not called direct LLM evaluation",
-         all(s.support == "related" for s in evaluation)),
-        ("at most one reword and one summary, five cards",
-         sum(s.kind == "rewrite" for s in result.suggestions) <= 1
-         and sum(s.kind == "summary" for s in result.suggestions) <= 1 and len(result.suggestions) <= 5),
-        ("every question rests on the posting",
-         all(q.term.casefold() in JOB_DESCRIPTION.casefold() for q in result.questions)),
+        (
+            "general model evaluation is not called direct LLM evaluation",
+            all(s.support == "related" for s in evaluation),
+        ),
+        (
+            "at most one reword and one summary, five cards",
+            sum(s.kind == "rewrite" for s in result.suggestions) <= 1
+            and sum(s.kind == "summary" for s in result.suggestions) <= 1
+            and len(result.suggestions) <= 5,
+        ),
+        (
+            "every question rests on the posting",
+            all(q.term.casefold() in JOB_DESCRIPTION.casefold() for q in result.questions),
+        ),
     ] + quality_checks(result)
 
 
 def check_python(result: CoachResult) -> list[Check]:
-    api_cards = [s for s in result.suggestions
-                 if "exp2.b4" in {r.id for r in s.sources} and "design" in s.requirement.casefold()]
+    api_cards = [
+        s for s in result.suggestions if "exp2.b4" in {r.id for r in s.sources} and "design" in s.requirement.casefold()
+    ]
     return [
         ("suggestions, not another question", result.kind == "suggestions"),
         ("the API and webhook integration (exp2.b4) is brought forward", "exp2.b4" in source_ids(result)),
         ("pipeline work (exp2.b1 or exp2.b2) is brought forward", bool({"exp2.b1", "exp2.b2"} & source_ids(result))),
-        ("integration is not claimed as API design",
-         not API_DESIGN_CLAIM.search(text_of(result)) and all(s.support == "related" for s in api_cards)),
+        (
+            "integration is not claimed as API design",
+            not API_DESIGN_CLAIM.search(text_of(result)) and all(s.support == "related" for s in api_cards),
+        ),
         ("no TypeScript/React in the text", not OTHER_TRACK_TERMS.search(text_of(result))),
         ("no Kubernetes/Terraform added to the text", not INFRA_TERMS.search(text_of(result))),
     ] + quality_checks(result)
@@ -145,8 +175,10 @@ def check_python(result: CoachResult) -> list[Check]:
 def check_clear(result: CoachResult) -> list[Check]:
     return [
         ("a clear posting goes straight to suggestions", result.kind == "suggestions" and bool(result.suggestions)),
-        ("the required term the CV lacks (monitoring) is asked about",
-         "monitoring" in {q.term.casefold() for q in result.questions}),
+        (
+            "the required term the CV lacks (monitoring) is asked about",
+            "monitoring" in {q.term.casefold() for q in result.questions},
+        ),
     ] + quality_checks(result)
 
 
@@ -157,8 +189,11 @@ CHECKS = {"choice": check_choice, "ai": check_ai, "python": check_python, "clear
 
 
 def print_result(name: str, result: CoachResult) -> None:
-    print(f"\n{name}: {result.kind}" + (f" (focus: {result.focus})" if result.focus else "")
-          + f", {result.dropped} proposal(s) dropped by our checks {result.dropped_reasons or ''}")
+    print(
+        f"\n{name}: {result.kind}"
+        + (f" (focus: {result.focus})" if result.focus else "")
+        + f", {result.dropped} proposal(s) dropped by our checks {result.dropped_reasons or ''}"
+    )
     for track in result.tracks:
         print(f"  track {track.name}: {track.coverage}, evidence {[e.source_id for e in track.evidence]}")
     for s in result.suggestions:

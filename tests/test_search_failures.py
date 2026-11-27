@@ -3,6 +3,7 @@ Search failures (human verification, timeouts) and recovery.
 
 Each failure has its own status and user-facing message.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,27 +15,32 @@ from app.services.search_errors import (
     looks_like_verification,
 )
 
-
 # ---- detection ----
 
-@pytest.mark.parametrize("title,body", [
-    ("Additional Verification Required", ""),
-    ("Indeed", "Verify you are human by completing the action below."),
-    ("Just a moment...", ""),
-    ("Indeed", "Zusätzliche Verifizierung erforderlich"),
-])
+
+@pytest.mark.parametrize(
+    "title,body",
+    [
+        ("Additional Verification Required", ""),
+        ("Indeed", "Verify you are human by completing the action below."),
+        ("Just a moment...", ""),
+        ("Indeed", "Zusätzliche Verifizierung erforderlich"),
+    ],
+)
 def test_verification_pages_are_recognised(title, body):
     assert looks_like_verification(title, "https://de.indeed.com/jobs?q=x", body)
 
 
 def test_normal_results_page_is_not_a_verification_page():
     assert not looks_like_verification(
-        "AI Engineer Jobs in Berlin | Indeed", "https://de.indeed.com/jobs?q=ai",
+        "AI Engineer Jobs in Berlin | Indeed",
+        "https://de.indeed.com/jobs?q=ai",
         "Jobs 1 - 15 of 200. Python developer, Acme GmbH, Berlin",
     )
 
 
 # ---- scraper: stops and closes the browser ----
+
 
 class FakeDriver:
     def __init__(self, title="Indeed", body_text="", cards=()):
@@ -50,6 +56,7 @@ class FakeDriver:
     def find_element(self, by, value):
         class Body:
             text = self._body_text
+
         return Body()
 
     def find_elements(self, by, value):
@@ -65,6 +72,7 @@ class ImmediateTimeoutWait:
 
     def until(self, condition):
         from selenium.common.exceptions import TimeoutException
+
         raise TimeoutException()
 
 
@@ -117,6 +125,7 @@ def test_plain_timeout_is_its_own_error_and_closes_the_driver(monkeypatch):
 
 # ---- routes ----
 
+
 def _client(monkeypatch, search):
     monkeypatch.setitem(app.dependency_overrides, get_job_search, lambda: search)
     return TestClient(app)
@@ -125,14 +134,18 @@ def _client(monkeypatch, search):
 def _raising(exc):
     def search(query, city, country, limit):
         raise exc
+
     return search
 
 
-@pytest.mark.parametrize("exc,status,code", [
-    (HumanVerificationRequired(), 503, "human_verification"),
-    (SearchTimeout(), 504, "search_timeout"),
-    (RuntimeError("chrome crashed"), 502, "search_failed"),
-])
+@pytest.mark.parametrize(
+    "exc,status,code",
+    [
+        (HumanVerificationRequired(), 503, "human_verification"),
+        (SearchTimeout(), 504, "search_timeout"),
+        (RuntimeError("chrome crashed"), 502, "search_failed"),
+    ],
+)
 def test_each_search_failure_has_its_own_status_and_message(monkeypatch, exc, status, code):
     client = _client(monkeypatch, _raising(exc))
 
@@ -143,6 +156,4 @@ def test_each_search_failure_has_its_own_status_and_message(monkeypatch, exc, st
     assert detail["code"] == code
     assert "manual" not in detail["message"].lower()
     if code == "human_verification":
-        assert detail["message"] == (
-            "Indeed insan doğrulaması istediği için arama durdu. CV’n bu oturumda hazır."
-        )
+        assert detail["message"] == ("Indeed insan doğrulaması istediği için arama durdu. CV’n bu oturumda hazır.")

@@ -7,6 +7,9 @@ Every accepted text is checked again, because the request comes from outside:
 a claim the CV does not back up must have been confirmed by the user, and the
 change is then recorded as added by the user.
 """
+
+from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
+from app.careers.core.evidence import role_label
 from app.models.coaching import (
     ApplyRequest,
     ApplyResult,
@@ -16,8 +19,12 @@ from app.models.coaching import (
     CoachChange,
 )
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
-from app.services.cv_changes import _ordinal, _where
-from app.careers.core.claims import cv_source_text, faithfulness_problems, skill_like_terms
+
+
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        return f"{n}th"
+    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
 
 
 class DecisionError(Exception):
@@ -50,8 +57,7 @@ def explain_claims(claims: list[Claim]) -> str:
         elif claim.kind == "numbers":
             one = len(claim.terms) == 1
             parts.append(
-                f"uses {'the number' if one else 'the numbers'} {terms}, "
-                f"which {'is' if one else 'are'} not in your CV"
+                f"uses {'the number' if one else 'the numbers'} {terms}, which {'is' if one else 'are'} not in your CV"
             )
         else:
             parts.append(f"claims {terms}, which your CV does not say")
@@ -61,9 +67,7 @@ def explain_claims(claims: list[Claim]) -> str:
 def find_claims(cv: StructuredCV, kind: str, source_id: str, text: str, job_description: str) -> list[Claim]:
     """What `text` says that the CV does not back up (nothing is judged about the claim itself)."""
     if kind == "rewrite":
-        found = next(
-            ((exp, b) for exp in cv.experiences for b in exp.bullets if b.id == source_id), None
-        )
+        found = next(((exp, b) for exp in cv.experiences for b in exp.bullets if b.id == source_id), None)
         if found is None:
             raise DecisionError("That CV line does not exist.", source_id)
         source = f"{found[1].text}\n{found[0].title}"
@@ -128,8 +132,13 @@ def apply_decisions(request: ApplyRequest) -> ApplyResult:
         else:
             cv.summary = text
             summary_change = CoachChange(
-                kind="summary", id="summary", suggestion_id=suggestion_id, where="Summary",
-                before=original.summary, after=text, user_added=user_added,
+                kind="summary",
+                id="summary",
+                suggestion_id=suggestion_id,
+                where="Summary",
+                before=original.summary,
+                after=text,
+                user_added=user_added,
                 detail="Edited by you" if edited else "",
             )
 
@@ -145,26 +154,36 @@ def apply_decisions(request: ApplyRequest) -> ApplyResult:
             number = 1 + max([0, *(int(b.id.rsplit(".b", 1)[1]) for b in exp.bullets)])
             bullet = CVBullet(id=f"{exp.id}.b{number}", text=text)
             exp.bullets.append(bullet)
-            added.append(CoachChange(
-                kind="added", id=bullet.id, suggestion_id=addition.id,
-                where=_where(exp, cv.experiences), after=text, user_added=True,
-            ))
+            added.append(
+                CoachChange(
+                    kind="added",
+                    id=bullet.id,
+                    suggestion_id=addition.id,
+                    where=role_label(exp, cv.experiences),
+                    after=text,
+                    user_added=True,
+                )
+            )
         else:
             project = next((p for p in cv.projects if p.id == addition.target.id), None)
             if project is None:
                 raise DecisionError("That project does not exist.", addition.id)
             project.description = f"{project.description}\n{text}".strip()
-            added.append(CoachChange(
-                kind="added", id=project.id, suggestion_id=addition.id,
-                where=project.name or "Project", after=text, user_added=True,
-            ))
+            added.append(
+                CoachChange(
+                    kind="added",
+                    id=project.id,
+                    suggestion_id=addition.id,
+                    where=project.name or "Project",
+                    after=text,
+                    user_added=True,
+                )
+            )
 
     # Moves last, so a moved line keeps whatever wording was accepted for it. The most
     # useful line ends up first: apply the least useful move first, then more useful ones.
     for exp in cv.experiences:
-        moves = sorted(
-            ((promoted[b.id][0], b.id) for b in exp.bullets if b.id in promoted), reverse=True
-        )
+        moves = sorted(((promoted[b.id][0], b.id) for b in exp.bullets if b.id in promoted), reverse=True)
         for _, bullet_id in moves:
             line = next(b for b in exp.bullets if b.id == bullet_id)
             exp.bullets.remove(line)
@@ -189,14 +208,16 @@ def apply_decisions(request: ApplyRequest) -> ApplyResult:
             suggestion_id, user_added, edited = rewritten.get(bullet.id, ("", False, False))
             if edited:
                 notes.append("Edited by you")
-            changes.append(CoachChange(
-                kind="moved_rewritten" if moved and reworded else "rewritten" if reworded else "moved",
-                id=bullet.id,
-                suggestion_id=suggestion_id or promoted[bullet.id][1],
-                where=_where(before_exp, original.experiences),
-                before=old_text[bullet.id] if reworded else "",
-                after=bullet.text,
-                detail=" · ".join(notes),
-                user_added=user_added,
-            ))
+            changes.append(
+                CoachChange(
+                    kind="moved_rewritten" if moved and reworded else "rewritten" if reworded else "moved",
+                    id=bullet.id,
+                    suggestion_id=suggestion_id or promoted[bullet.id][1],
+                    where=role_label(before_exp, original.experiences),
+                    before=old_text[bullet.id] if reworded else "",
+                    after=bullet.text,
+                    detail=" · ".join(notes),
+                    user_added=user_added,
+                )
+            )
     return ApplyResult(cv=cv, changes=[*changes, *added])

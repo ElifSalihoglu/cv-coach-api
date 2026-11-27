@@ -6,18 +6,20 @@ carries education and certifications, because for many professions a degree, a l
 certificate is the evidence. They are projected through `core.minimize`: the degree and the
 certificate name only, with the school, the issuer, dates and any number removed.
 """
+
 from typing import Any
 
 from app.careers.agents.general.rules import offers_choice
 from app.careers.core.minimize import (
-    certification_payload, education_payload, experience_payload, project_payload,
+    certification_payload,
+    education_payload,
+    experience_payload,
+    project_payload,
 )
 from app.models.cv_document import StructuredCV
 
 
-def general_input(
-    cv: StructuredCV, job_title: str, job_description: str, focus: str
-) -> dict[str, Any]:
+def general_input(cv: StructuredCV, job_title: str, job_description: str, focus: str) -> dict[str, Any]:
     return {
         "job_title": job_title,
         "job_description": job_description,

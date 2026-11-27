@@ -20,8 +20,12 @@ def get_job_search() -> SearchFn:
         from app.data_scraper.scraper import scrape_indeed_jobs_with_details
     except ImportError as exc:
         log_event(
-            logger, logging.ERROR, "job_search",
-            outcome="error", reason="scraper_unavailable", exception=type(exc).__name__,
+            logger,
+            logging.ERROR,
+            "job_search",
+            outcome="error",
+            reason="scraper_unavailable",
+            exception=type(exc).__name__,
         )
         raise HTTPException(
             status_code=503,
@@ -41,8 +45,12 @@ def _search_http_error(exc: Exception) -> HTTPException:
         )
     if not getattr(exc, "already_logged", False):
         log_event(
-            logger, logging.ERROR, "jobs_request",
-            outcome="error", reason="flow_error", exception=type(exc).__name__,
+            logger,
+            logging.ERROR,
+            "jobs_request",
+            outcome="error",
+            reason="flow_error",
+            exception=type(exc).__name__,
         )
     return HTTPException(
         status_code=502,
@@ -75,16 +83,20 @@ async def search_only(
 ) -> JobSearchResponse:
     """Find jobs with their descriptions. Never calls a model, needs no API key."""
     log_event(
-        logger, logging.INFO, "jobs_request",
-        endpoint="/v1/jobs/search", max_jobs=request.limit,
+        logger,
+        logging.INFO,
+        "jobs_request",
+        endpoint="/v1/jobs/search",
+        max_jobs=request.limit,
     )
     try:
         matched = await search_jobs(
-            search=search, query=request.query, city=request.city,
-            country=request.country, limit=request.limit,
+            search=search,
+            query=request.query,
+            city=request.city,
+            country=request.country,
+            limit=request.limit,
         )
     except Exception as exc:
         raise _search_http_error(exc) from exc
-    return JobSearchResponse(
-        jobs=[FoundJob(id=job_key(job.source_url), **job.model_dump()) for job in matched]
-    )
+    return JobSearchResponse(jobs=[FoundJob(id=job_key(job.source_url), **job.model_dump()) for job in matched])

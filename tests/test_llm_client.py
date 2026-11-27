@@ -14,6 +14,7 @@ from app.services.llm_client import (
     LLMUnavailableError,
 )
 
+
 class Answer(BaseModel):
     """A stand-in output schema with one rule the model's answer can break."""
 
@@ -56,9 +57,7 @@ def test_generate_returns_validated_content():
     client = LLMClient(openai_client=fake_openai, model="test-model")
 
     result = asyncio.run(
-        client.generate(
-            system_prompt="test prompt", user_content={"job_title": "AI Engineer"}, output_model=Answer
-        )
+        client.generate(system_prompt="test prompt", user_content={"job_title": "AI Engineer"}, output_model=Answer)
     )
 
     assert isinstance(result, Answer)

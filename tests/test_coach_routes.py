@@ -1,4 +1,5 @@
 """The coach over HTTP with a fake model, including the whole decide-and-download flow."""
+
 import io
 import re
 
@@ -6,11 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
-from app.api.v1 import routes_coach
 from app.api.v1.routes_coach import get_orchestrator
 from app.careers.assembly import build_orchestrator
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.main import app
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.coach_scenarios import AI_SUMMARY, FakeLLM, ai_output, python_output, tracks_output
 
 BODY = {"cv": CV.model_dump(), "job_title": JOB_TITLE, "job_description": JOB_DESCRIPTION}
@@ -51,21 +51,35 @@ def test_deciding_checking_and_downloading_never_call_the_model(monkeypatch, cli
     def boom():
         raise AssertionError("must not touch the model")
 
-    monkeypatch.setattr(routes_coach, "get_orchestrator", boom)
+    monkeypatch.setitem(app.dependency_overrides, get_orchestrator, boom)
     apply = client.post("/v1/coach/apply", json={"cv": CV.model_dump(), "suggestions": [], "decisions": {}})
     check = client.post("/v1/coach/check", json={"cv": CV.model_dump(), "kind": "summary", "text": "Python engineer."})
     assert apply.status_code == 200 and check.status_code == 200
 
 
 def test_unconfirmed_claims_are_refused_with_the_terms(client):
-    response = client.post("/v1/coach/apply", json={
-        "cv": CV.model_dump(), "job_description": JOB_DESCRIPTION,
-        "suggestions": [{
-            "id": "summary", "kind": "summary", "requirement": "x", "level": "required", "sources": [
-                {"id": "exp1.b1", "where": "w", "text": "t"}], "support": "direct",
-            "before": CV.summary, "after": CV.summary, "rationale": "r", "priority": 1}],
-        "decisions": {"summary": {"action": "edit", "text": "Python engineer who runs Kubernetes."}},
-    })
+    response = client.post(
+        "/v1/coach/apply",
+        json={
+            "cv": CV.model_dump(),
+            "job_description": JOB_DESCRIPTION,
+            "suggestions": [
+                {
+                    "id": "summary",
+                    "kind": "summary",
+                    "requirement": "x",
+                    "level": "required",
+                    "sources": [{"id": "exp1.b1", "where": "w", "text": "t"}],
+                    "support": "direct",
+                    "before": CV.summary,
+                    "after": CV.summary,
+                    "rationale": "r",
+                    "priority": 1,
+                }
+            ],
+            "decisions": {"summary": {"action": "edit", "text": "Python engineer who runs Kubernetes."}},
+        },
+    )
     detail = response.json()["detail"]
     assert response.status_code == 422 and detail["code"] == "unconfirmed_claims"
     assert detail["claims"] == [{"kind": "skills", "terms": ["Kubernetes"]}]
@@ -79,20 +93,33 @@ def test_accept_one_edit_one_reject_one_and_the_pdf_shows_exactly_that(llm, clie
     assert [s["id"] for s in suggestions] == ["summary", "promote:exp1.b4", "promote:exp1.b2"]
     edited = AI_SUMMARY + " I enjoy mentoring."
 
-    applied = client.post("/v1/coach/apply", json={
-        "cv": CV.model_dump(), "suggestions": suggestions, "job_description": JOB_DESCRIPTION,
-        "decisions": {
-            "promote:exp1.b4": {"action": "accept"},               # accepted
-            "summary": {"action": "edit", "text": edited},         # edited
-        },                                                         # promote:exp1.b2 is rejected
-    }).json()
+    applied = client.post(
+        "/v1/coach/apply",
+        json={
+            "cv": CV.model_dump(),
+            "suggestions": suggestions,
+            "job_description": JOB_DESCRIPTION,
+            "decisions": {
+                "promote:exp1.b4": {"action": "accept"},  # accepted
+                "summary": {"action": "edit", "text": edited},  # edited
+            },  # promote:exp1.b2 is rejected
+        },
+    ).json()
 
     final = applied["cv"]
     assert final["summary"] == edited
-    assert [b["id"] for b in final["experiences"][0]["bullets"]] == ["exp1.b4", "exp1.b1", "exp1.b2", "exp1.b3", "exp1.b5"]
+    assert [b["id"] for b in final["experiences"][0]["bullets"]] == [
+        "exp1.b4",
+        "exp1.b1",
+        "exp1.b2",
+        "exp1.b3",
+        "exp1.b5",
+    ]
     assert [c["kind"] for c in applied["changes"]] == ["summary", "moved"]
 
-    pdf = client.post("/v1/cv/render-pdf", json={"cv": final, "company": "Northstar Games", "job_title": "Software Engineer"})
+    pdf = client.post(
+        "/v1/cv/render-pdf", json={"cv": final, "company": "Northstar Games", "job_title": "Software Engineer"}
+    )
     text = pdf_text(pdf.content)
     b4, b1, b2 = (CV.experiences[0].bullets[i].text for i in (3, 0, 1))
     assert edited in text and CV.summary not in text  # the edited summary replaced the old one
@@ -100,7 +127,9 @@ def test_accept_one_edit_one_reject_one_and_the_pdf_shows_exactly_that(llm, clie
     assert len(llm.calls) == model_calls  # deciding and downloading made no model call
 
     # the main CV was only ever a request body; the same one still gives the same original PDF
-    original = pdf_text(client.post("/v1/cv/render-pdf", json={"cv": CV.model_dump(), "company": "c", "job_title": "t"}).content)
+    original = pdf_text(
+        client.post("/v1/cv/render-pdf", json={"cv": CV.model_dump(), "company": "c", "job_title": "t"}).content
+    )
     assert CV.summary in original and original.index(b1) < original.index(b4)
 
 

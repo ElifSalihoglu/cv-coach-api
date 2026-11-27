@@ -2,6 +2,7 @@
 Synthetic candidate and a synthetic multi-track posting, shared by the fake-model
 tests and the live evaluation. Nothing here is real personal or company data.
 """
+
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 
 JOB_TITLE = "Software Engineer (m/f/d) - choose your track"
@@ -32,7 +33,11 @@ Nice to have
 
 def _exp(exp_id: str, title: str, employer: str, start: str, end: str, bullets: list[str]) -> CVExperience:
     return CVExperience(
-        id=exp_id, title=title, employer=employer, start=start, end=end,
+        id=exp_id,
+        title=title,
+        employer=employer,
+        start=start,
+        end=end,
         bullets=[CVBullet(id=f"{exp_id}.b{i}", text=t) for i, t in enumerate(bullets, start=1)],
     )
 
@@ -44,19 +49,33 @@ CV = StructuredCV(
     summary="Software engineer with seven years of experience in Python, APIs and data pipelines.",
     skills=["Python", "FastAPI", "Airflow", "SQL", "Docker", "REST APIs"],
     experiences=[
-        _exp("exp1", "Senior Software Engineer", "Boğaz Yazılım", "2022", "Present", [
-            "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
-            "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
-            "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
-            "Set up evaluation dashboards and offline test sets to track model quality across releases.",
-            "Mentored four engineers and led the weekly architecture review.",
-        ]),
-        _exp("exp2", "Data Engineer", "Çınar Veri", "2018", "2022", [
-            "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
-            "Built a feature store serving 40 features to three production models.",
-            "Introduced data-quality checks that caught schema drift before it reached reports.",
-            "Integrated third-party APIs and webhooks into internal tools for the operations team.",
-        ]),
+        _exp(
+            "exp1",
+            "Senior Software Engineer",
+            "Boğaz Yazılım",
+            "2022",
+            "Present",
+            [
+                "Built an LLM-based invoice triage agent handling 12,000 documents per month and cut manual review by 60%.",
+                "Designed workflow automations with queues and retries, replacing five hand-run scripts.",
+                "Trained and deployed a churn-prediction model that lifted retention campaign precision by 18%.",
+                "Set up evaluation dashboards and offline test sets to track model quality across releases.",
+                "Mentored four engineers and led the weekly architecture review.",
+            ],
+        ),
+        _exp(
+            "exp2",
+            "Data Engineer",
+            "Çınar Veri",
+            "2018",
+            "2022",
+            [
+                "Automated nightly ETL pipelines in Python and Airflow, saving about 20 engineer-hours per week.",
+                "Built a feature store serving 40 features to three production models.",
+                "Introduced data-quality checks that caught schema drift before it reached reports.",
+                "Integrated third-party APIs and webhooks into internal tools for the operations team.",
+            ],
+        ),
     ],
 )
 

@@ -1,4 +1,5 @@
-"""The shape of the agent architecture: what is shared, what is domain-specific, what is sent."""
+"""What is shared and what is domain-specific in the agent profiles, and what the IT agent sends."""
+
 import asyncio
 import json
 from dataclasses import replace
@@ -9,18 +10,29 @@ from app.careers.core.agent import CareerAgent
 from app.careers.core.engine import DEFAULT_ENGINE
 from app.careers.core.gates import CORE_GATES, Gate
 from app.careers.core.state import CareerCase
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelSuggestion
-from tests.fixtures.coach_scenarios import FakeLLM, Q_REQ
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
+from tests.fixtures.coach_scenarios import Q_REQ, FakeLLM
 
 CORE_DIR = Path(__file__).resolve().parents[1] / "app" / "careers" / "core"
 
 
 def _generic_suggestion() -> CoachModelOutput:
     # "3+ years" is a generic condition: the IT agent refuses to aim a card at it.
-    return CoachModelOutput(mode="suggestions", suggestions=[ModelSuggestion(
-        kind="promote", requirement_quote=Q_REQ, level="required", source_ids=["exp1.b4"],
-        support="related", priority=1, rationale="r")])
+    return CoachModelOutput(
+        mode="suggestions",
+        suggestions=[
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=Q_REQ,
+                level="required",
+                source_ids=["exp1.b4"],
+                support="related",
+                priority=1,
+                rationale="r",
+            )
+        ],
+    )
 
 
 def test_the_shared_core_knows_nothing_about_a_domain():

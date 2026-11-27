@@ -1,18 +1,23 @@
 """DefaultRouter (used by the orchestrator): override, clear matches, unclear postings. No model involved."""
+
 import dataclasses
 import inspect
 
 import pytest
 
-from app.careers.core.state import RoutingSignals
 from app.careers.agents.general import GENERAL_CARD
 from app.careers.assembly import build_default_registry
+from app.careers.core.state import RoutingSignals
 from app.careers.registry import AgentRegistry, UnknownDomainError
 from app.careers.router import DefaultRouter
 from tests.fixtures.coach_fixture import CLEAR_JOB_DESCRIPTION, CLEAR_JOB_TITLE, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.general_fixtures import (
-    MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, MECH_JOB_DESCRIPTION, MECH_JOB_TITLE,
-    NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
+    MARKETING_JOB_DESCRIPTION,
+    MARKETING_JOB_TITLE,
+    MECH_JOB_DESCRIPTION,
+    MECH_JOB_TITLE,
+    NURSE_JOB_DESCRIPTION,
+    NURSE_JOB_TITLE,
 )
 from tests.toy_agents import career_agent
 
@@ -26,23 +31,29 @@ def test_the_router_can_not_see_the_cv():
     assert set(inspect.signature(DefaultRouter.route).parameters) == {"self", "signals", "registry", "override"}
 
 
-@pytest.mark.parametrize("title,description", [
-    (JOB_TITLE, JOB_DESCRIPTION),
-    (CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION),
-    ("Kıdemli Yazılım Geliştirici", "Python ve bulut deneyimi aranıyor."),
-    ("Senior Backend Developer (m/f/d)", "Build services."),
-])
+@pytest.mark.parametrize(
+    "title,description",
+    [
+        (JOB_TITLE, JOB_DESCRIPTION),
+        (CLEAR_JOB_TITLE, CLEAR_JOB_DESCRIPTION),
+        ("Kıdemli Yazılım Geliştirici", "Python ve bulut deneyimi aranıyor."),
+        ("Senior Backend Developer (m/f/d)", "Build services."),
+    ],
+)
 def test_a_clear_it_title_goes_to_the_it_agent_by_rules(title, description):
     decision = route(RoutingSignals(title, description))
     assert (decision.primary, decision.method, decision.confidence) == ("it", "rules", "high")
     assert decision.reasons and all(r.startswith("title_cue:") for r in decision.reasons)
 
 
-@pytest.mark.parametrize("title,description", [
-    (NURSE_JOB_TITLE, NURSE_JOB_DESCRIPTION),
-    (MARKETING_JOB_TITLE, MARKETING_JOB_DESCRIPTION),
-    (MECH_JOB_TITLE, MECH_JOB_DESCRIPTION),  # engineering has no agent yet
-])
+@pytest.mark.parametrize(
+    "title,description",
+    [
+        (NURSE_JOB_TITLE, NURSE_JOB_DESCRIPTION),
+        (MARKETING_JOB_TITLE, MARKETING_JOB_DESCRIPTION),
+        (MECH_JOB_TITLE, MECH_JOB_DESCRIPTION),  # engineering has no agent yet
+    ],
+)
 def test_anything_unclear_or_unsupported_goes_to_the_general_agent(title, description):
     decision = route(RoutingSignals(title, description))
     assert (decision.primary, decision.method, decision.confidence) == ("general", "fallback", "low")
@@ -61,7 +72,9 @@ def test_cues_match_whole_words_only():
 
 
 def test_the_target_position_counts_like_the_title():
-    decision = route(RoutingSignals("Team Member", "Help the team.", career_goal="I want to become a backend developer"))
+    decision = route(
+        RoutingSignals("Team Member", "Help the team.", career_goal="I want to become a backend developer")
+    )
     assert decision.primary == "it" and decision.method == "rules"
 
 
@@ -93,8 +106,9 @@ def test_a_new_agent_is_routed_to_by_its_own_cues_with_no_router_change():
 
 
 def test_the_description_can_veto_a_title_match_when_another_agent_fits_it_better():
-    registry = AgentRegistry([career_agent("a", "Field A", "analyst", "data"),
-                              career_agent("b", "Field B", "ledger", "audit", "tax")])
+    registry = AgentRegistry(
+        [career_agent("a", "Field A", "analyst", "data"), career_agent("b", "Field B", "ledger", "audit", "tax")]
+    )
     clear = route(RoutingSignals("Analyst", "Reporting."), registry)
     doubtful = route(RoutingSignals("Analyst", "Ledger work, audit trails and tax filings."), registry)
     assert clear.primary == "a" and doubtful.primary == "general"

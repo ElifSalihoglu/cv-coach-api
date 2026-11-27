@@ -4,6 +4,7 @@ What an agent is given, how it describes itself, and what the orchestration reco
 Routing reads `RoutingSignals`, which has no CV field: the CV cannot influence which agent
 is chosen, by construction.
 """
+
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -68,7 +69,7 @@ class OrchestrationError(Exception):
 
 class RoutingDecision(BaseModel):
     primary: str  # agent id
-    secondary: tuple[str, ...] = ()  # reserved for collaboration; empty in this phase
+    secondary: tuple[str, ...] = ()  # further agents consulted; empty while one agent answers
     method: Literal["override", "rules", "fallback"]
     confidence: Literal["high", "low"]
     reasons: tuple[str, ...] = ()  # short codes, e.g. "title_cue:software engineer"

@@ -6,6 +6,7 @@ A gate looks at one proposal the model made and says whether to throw it away. I
 every domain needs are here; a domain agent adds its own (see agents/<domain>/gates.py).
 Gates run in order and the first one that rejects wins.
 """
+
 from dataclasses import dataclass
 from typing import Callable
 

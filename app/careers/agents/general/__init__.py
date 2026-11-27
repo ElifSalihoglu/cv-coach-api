@@ -1,4 +1,5 @@
 """The General agent: analyses any occupation that no specialist agent claims."""
+
 from app.careers.agents.general.gates import DRAFT_GATES, REQUIREMENT_GATES
 from app.careers.agents.general.model_input import general_input
 from app.careers.agents.general.prompt import GENERAL_SYSTEM_PROMPT
@@ -21,7 +22,7 @@ GENERAL_CARD = AgentCard(
     id="general",
     domain="General career",
     description="Any occupation without a dedicated agent: care, education, sales, administration, "
-                "hospitality, trades, public service and fields not yet covered.",
+    "hospitality, trades, public service and fields not yet covered.",
     # no routing cues by design: the orchestrator picks it when no specialist clearly fits
 )
 

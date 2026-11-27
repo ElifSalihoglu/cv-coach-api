@@ -5,6 +5,7 @@ that a draft adds to the CV.
 Regression: a source summary "3+ years" and a posting saying "what takes 3 years elsewhere" made the
 literal "3" a "skill not in the CV", so a harmless summary was refused.
 """
+
 import pytest
 
 from app.careers.core.claims import Problem, faithfulness_problems, skill_like_terms
@@ -64,8 +65,9 @@ MULTI_TRACK_JOB = (
 def test_optional_skills_of_other_tracks_are_not_added():
     source = "Python engineer who builds APIs. Python, FastAPI"
 
-    leaked = problems("Python engineer who builds APIs and runs Kubernetes with Terraform and PyTorch.",
-                      MULTI_TRACK_JOB, source)
+    leaked = problems(
+        "Python engineer who builds APIs and runs Kubernetes with Terraform and PyTorch.", MULTI_TRACK_JOB, source
+    )
     assert leaked == [Problem("skills", ("Kubernetes", "PyTorch", "Terraform"))]
 
     assert problems("Python engineer who builds and ships APIs with FastAPI.", MULTI_TRACK_JOB, source) == []

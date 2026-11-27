@@ -2,9 +2,9 @@
 CV parsing and rendering with one synthetic Turkish CV.
 
 The PDF is read back as text to check that facts survive the round trip (Turkish characters,
-employers, dates), that every bullet stays under its own employer, and that the preview and the
-PDF carry the same content. Parsing uses a fake model.
+employers, dates) and that every bullet stays under its own employer. Parsing uses a fake model.
 """
+
 import asyncio
 import io
 import re
@@ -12,9 +12,8 @@ import re
 from pypdf import PdfReader
 
 from app.models.cv_document import ParsedCV, StructuredCV
-from app.services.cv_coach import OpenAICVCoach
-from app.services.cv_parsing import assign_ids, check_against_text
-from app.services.cv_render import cv_filename, render_markdown, render_pdf
+from app.services.cv_parsing import assign_ids, check_against_text, parse_cv_text
+from app.services.cv_render import cv_filename, render_pdf
 
 CV_TEXT = """Çağla Şahin
 cagla@example.com +90 555 000 00 00 İstanbul
@@ -49,25 +48,41 @@ B1 = "Müşteri portalı için REST API'leri geliştirdim."
 B2 = "Üç kişilik ekiple Docker tabanlı dağıtım kurdum."
 
 PARSED = ParsedCV(
-    name="Çağla Şahin", email="cagla@example.com", phone="+90 555 000 00 00",
-    location="İstanbul", summary="Veri odaklı yazılım mühendisi.",
+    name="Çağla Şahin",
+    email="cagla@example.com",
+    phone="+90 555 000 00 00",
+    location="İstanbul",
+    summary="Veri odaklı yazılım mühendisi.",
     experiences=[
-        {"employer": "Acme Teknoloji", "title": "Kıdemli Veri Mühendisi",
-         "start": "Mart 2021", "end": "Devam", "bullets": [A1, A2]},
-        {"employer": "Beta Yazılım", "title": "Yazılım Mühendisi",
-         "start": "2018", "end": "2021", "bullets": [B1, B2]},
+        {
+            "employer": "Acme Teknoloji",
+            "title": "Kıdemli Veri Mühendisi",
+            "start": "Mart 2021",
+            "end": "Devam",
+            "bullets": [A1, A2],
+        },
+        {"employer": "Beta Yazılım", "title": "Yazılım Mühendisi", "start": "2018", "end": "2021", "bullets": [B1, B2]},
     ],
-    education=[{"school": "İstanbul Teknik Üniversitesi",
-                "degree": "Bilgisayar Mühendisliği", "start": "2014", "end": "2018",
-                "details": 'Bitirme tezi: Akış verisinde anomali tespiti.\n'
-                           'Yayın: Çağla Şahin, "Gerçek zamanlı veri kalitesi", '
-                           'Ulusal Yazılım Sempozyumu 2018.'}],
+    education=[
+        {
+            "school": "İstanbul Teknik Üniversitesi",
+            "degree": "Bilgisayar Mühendisliği",
+            "start": "2014",
+            "end": "2018",
+            "details": "Bitirme tezi: Akış verisinde anomali tespiti.\n"
+            'Yayın: Çağla Şahin, "Gerçek zamanlı veri kalitesi", '
+            "Ulusal Yazılım Sempozyumu 2018.",
+        }
+    ],
     skills=["Python", "SQL", "Docker", "Airflow"],
-    projects=[{"name": "Veri Kalitesi Paneli",
-               "description": "Açık kaynak bir panel; şema değişikliklerini otomatik raporlar.\n"
-                              "Python ve SQL ile geliştirildi."}],
-    certifications=[{"name": "Google Professional Data Engineer",
-                     "issuer": "Google Cloud", "date": "2022"}],
+    projects=[
+        {
+            "name": "Veri Kalitesi Paneli",
+            "description": "Açık kaynak bir panel; şema değişikliklerini otomatik raporlar.\n"
+            "Python ve SQL ile geliştirildi.",
+        }
+    ],
+    certifications=[{"name": "Google Professional Data Engineer", "issuer": "Google Cloud", "date": "2022"}],
     languages=["İngilizce - C1", "Almanca - B1"],
 )
 
@@ -85,8 +100,9 @@ def _flat_pdf_text(cv: StructuredCV) -> str:
 
 # ---- parsing
 
+
 def test_parse_assigns_stable_ids_and_finds_everything_in_the_text():
-    response = asyncio.run(OpenAICVCoach(FakeLLM()).parse(CV_TEXT))
+    response = asyncio.run(parse_cv_text(FakeLLM(), CV_TEXT))
 
     assert response.warnings == []
     cv = response.cv
@@ -96,7 +112,7 @@ def test_parse_assigns_stable_ids_and_finds_everything_in_the_text():
 
 
 def test_parse_is_clean_when_extra_sections_are_in_the_text():
-    response = asyncio.run(OpenAICVCoach(FakeLLM()).parse(CV_TEXT))
+    response = asyncio.run(parse_cv_text(FakeLLM(), CV_TEXT))
 
     assert response.warnings == []
     cv = response.cv
@@ -131,6 +147,7 @@ def test_parse_warns_when_value_is_not_in_the_text_or_missing():
 
 # ---- rendering
 
+
 def test_the_pdf_keeps_every_fact_with_turkish_characters():
     text = _flat_pdf_text(assign_ids(PARSED))
 
@@ -144,8 +161,9 @@ def test_the_pdf_keeps_every_fact_with_turkish_characters():
 def test_bullets_stay_under_their_own_employer_even_when_reordered():
     cv = assign_ids(PARSED)
     first = cv.experiences[0]
-    reordered = cv.model_copy(update={"experiences": [
-        first.model_copy(update={"bullets": list(reversed(first.bullets))}), cv.experiences[1]]})
+    reordered = cv.model_copy(
+        update={"experiences": [first.model_copy(update={"bullets": list(reversed(first.bullets))}), cv.experiences[1]]}
+    )
 
     text = _flat_pdf_text(reordered)
     acme, beta, end = text.index("Acme Teknoloji"), text.index("Beta Yazılım"), text.index("PROJECTS")
@@ -170,27 +188,14 @@ EXTRA_FACTS = [
 ]
 
 
-def test_projects_languages_certifications_and_thesis_reach_preview_and_pdf():
-    cv = assign_ids(PARSED)
-    preview = re.sub(r"\s+", " ", render_markdown(cv))
-    pdf_text = _flat_pdf_text(cv)
+def test_projects_languages_certifications_and_thesis_reach_the_pdf():
+    pdf_text = _flat_pdf_text(assign_ids(PARSED))
 
     for fact in EXTRA_FACTS:
-        assert fact in preview, fact
         assert fact in pdf_text, fact
     # The thesis stays under the degree, before the next section.
     assert pdf_text.index("Bitirme tezi") > pdf_text.index("İstanbul Teknik")
     assert pdf_text.index("Bitirme tezi") < pdf_text.index("CERTIFICATIONS")
-
-
-def test_preview_and_pdf_use_the_same_content():
-    cv = assign_ids(PARSED)
-    preview = render_markdown(cv)
-    pdf_text = _flat_pdf_text(cv)
-
-    for value in (cv.name, cv.summary, "Acme Teknoloji", "Mart 2021", cv.experiences[0].bullets[0].text):
-        assert value in preview
-        assert value in pdf_text
 
 
 def test_filename_has_candidate_company_and_position():
@@ -206,9 +211,7 @@ def test_long_cv_breaks_pages_and_keeps_every_bullet():
     cv = assign_ids(PARSED)
     template = cv.experiences[0].bullets[0]
     cv.experiences[0].bullets = [
-        template.model_copy(
-            update={"id": f"exp1.b{i}", "text": f"Madde {i}: " + "uzun açıklama " * 12}
-        )
+        template.model_copy(update={"id": f"exp1.b{i}", "text": f"Madde {i}: " + "uzun açıklama " * 12})
         for i in range(1, 41)
     ]
 

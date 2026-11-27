@@ -8,6 +8,7 @@ title and the target position (`RoutingSignals`; no CV).
 
 Nothing here lists occupations. The cues come from the registered specialists' own cards.
 """
+
 import logging
 import re
 from typing import Sequence
@@ -38,19 +39,23 @@ class DefaultRouter:
     def __init__(self, general: AgentCard) -> None:
         self._general = general
 
-    def route(
-        self, signals: RoutingSignals, registry: AgentRegistry, *, override: str = ""
-    ) -> RoutingDecision:
+    def route(self, signals: RoutingSignals, registry: AgentRegistry, *, override: str = "") -> RoutingDecision:
         if override.strip():
-            return self._done(RoutingDecision(
-                primary=self._resolve(override, registry), method="override",
-                confidence="high", reasons=("override",)))
+            return self._done(
+                RoutingDecision(
+                    primary=self._resolve(override, registry),
+                    method="override",
+                    confidence="high",
+                    reasons=("override",),
+                )
+            )
 
         decision = self._by_rules(signals, registry)
         if decision is not None:
             return self._done(decision)
-        return self._done(RoutingDecision(
-            primary=self._general.id, method="fallback", confidence="low", reasons=("no_clear_match",)))
+        return self._done(
+            RoutingDecision(primary=self._general.id, method="fallback", confidence="low", reasons=("no_clear_match",))
+        )
 
     def _resolve(self, name: str, registry: AgentRegistry) -> str:
         """An explicit request is never guessed at: an unknown domain is an error."""
@@ -70,19 +75,27 @@ class DefaultRouter:
         matched = {agent_id: found for agent_id, found in hits.items() if found}
         if len(matched) != 1:
             return None  # none: unsupported or unclear; several: interdisciplinary. Not for rules to settle.
-        (agent_id, found), = matched.items()
+        ((agent_id, found),) = matched.items()
         # The description may only confirm or veto: another agent whose cues fill it more is a doubt.
         mine = len(cues_in(signals.job_description, registry.get(agent_id).card.routing_cues))
         for other in registry.cards():
             if other.id != agent_id and len(cues_in(signals.job_description, other.routing_cues)) > mine:
                 return None
         return RoutingDecision(
-            primary=agent_id, method="rules", confidence="high",
+            primary=agent_id,
+            method="rules",
+            confidence="high",
             reasons=tuple(f"title_cue:{cue}" for cue in found[:3]),
         )
 
     @staticmethod
     def _done(decision: RoutingDecision) -> RoutingDecision:
-        log_event(logger, logging.INFO, "coach_routed", agent=decision.primary,
-                  method=decision.method, confidence=decision.confidence)
+        log_event(
+            logger,
+            logging.INFO,
+            "coach_routed",
+            agent=decision.primary,
+            method=decision.method,
+            confidence=decision.confidence,
+        )
         return decision

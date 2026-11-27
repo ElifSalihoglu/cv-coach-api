@@ -18,10 +18,7 @@ T = TypeVar("T", bound=BaseModel)
 class ContentGenerator(Protocol):
     """What the agents need from a model client; `LLMClient` is the real one, tests pass fakes."""
 
-    async def generate(
-        self, system_prompt: str, user_content: dict[str, Any], output_model: type[T]
-    ) -> T:
-        ...
+    async def generate(self, system_prompt: str, user_content: dict[str, Any], output_model: type[T]) -> T: ...
 
 
 class LLMError(Exception):
@@ -78,8 +75,11 @@ class LLMClient:
         user_message = json.dumps(user_content, ensure_ascii=False)
         # Sizes and settings only, never the prompt or the content itself.
         log_event(
-            logger, logging.INFO, "llm_call_start",
-            model=self._model, temperature=TEMPERATURE,
+            logger,
+            logging.INFO,
+            "llm_call_start",
+            model=self._model,
+            temperature=TEMPERATURE,
             input_chars=len(system_prompt) + len(user_message),
         )
         details: dict[str, object] = {}
@@ -88,15 +88,24 @@ class LLMClient:
         except LLMError as exc:
             # The single place where an LLM failure is logged.
             log_event(
-                logger, logging.WARNING, "llm_call",
-                model=self._model, outcome="failed", reason=exc.reason_code,
-                duration_ms=round((time.perf_counter() - started) * 1000), **details,
+                logger,
+                logging.WARNING,
+                "llm_call",
+                model=self._model,
+                outcome="failed",
+                reason=exc.reason_code,
+                duration_ms=round((time.perf_counter() - started) * 1000),
+                **details,
             )
             raise
         log_event(
-            logger, logging.INFO, "llm_call",
-            model=self._model, outcome="ok",
-            duration_ms=round((time.perf_counter() - started) * 1000), **details,
+            logger,
+            logging.INFO,
+            "llm_call",
+            model=self._model,
+            outcome="ok",
+            duration_ms=round((time.perf_counter() - started) * 1000),
+            **details,
         )
         return result
 
@@ -144,9 +153,7 @@ class LLMClient:
 
         message = choice.message
         if getattr(message, "refusal", None):
-            raise LLMOutputError(
-                f"The language model refused: {message.refusal}", "llm_refusal"
-            )
+            raise LLMOutputError(f"The language model refused: {message.refusal}", "llm_refusal")
         if not message.content:
             raise LLMOutputError("The language model returned an empty answer.", "llm_empty_output")
 

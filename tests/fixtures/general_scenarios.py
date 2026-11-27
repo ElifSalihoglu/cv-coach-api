@@ -1,4 +1,5 @@
 """Canned model answers for the non-IT fixtures (fake model, no API)."""
+
 from app.models.coaching import CoachModelOutput, ModelQuestion, ModelRequirement, ModelSuggestion
 
 # ---- nurse
@@ -17,22 +18,45 @@ NURSE_SUMMARY = (
 
 def nurse_output() -> CoachModelOutput:
     return CoachModelOutput(
-        mode="suggestions", focus="Staff Nurse",
+        mode="suggestions",
+        focus="Staff Nurse",
         responsibilities=["Care for surgical patients", "Administer medication", "Mentor new nurses"],
         requirements=[
             ModelRequirement(text="Registered Nurse licence", quote=Q_LICENCE, level="required"),
-            ModelRequirement(text="BLS certification", quote="Basic Life Support (BLS) certification", level="required"),
+            ModelRequirement(
+                text="BLS certification", quote="Basic Life Support (BLS) certification", level="required"
+            ),
             ModelRequirement(text="ACLS certification", quote=Q_ACLS, level="preferred"),
         ],
         suggestions=[
-            ModelSuggestion(kind="summary", requirement_quote=Q_MEDS, level="required", source_ids=["exp1.b3"],
-                            support="direct", after=NURSE_SUMMARY, priority=1,
-                            rationale="Leads with the measured medication-safety result."),
-            ModelSuggestion(kind="promote", requirement_quote=Q_HANDOVER, level="required", source_ids=["exp1.b2"],
-                            support="related", priority=2,
-                            rationale="Related: training new nurses on handover, not leading the ward handover."),
-            ModelSuggestion(kind="promote", requirement_quote=Q_YEARS, level="required", source_ids=["exp1.b4"],
-                            support="related", priority=3, rationale="Years of experience."),
+            ModelSuggestion(
+                kind="summary",
+                requirement_quote=Q_MEDS,
+                level="required",
+                source_ids=["exp1.b3"],
+                support="direct",
+                after=NURSE_SUMMARY,
+                priority=1,
+                rationale="Leads with the measured medication-safety result.",
+            ),
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=Q_HANDOVER,
+                level="required",
+                source_ids=["exp1.b2"],
+                support="related",
+                priority=2,
+                rationale="Related: training new nurses on handover, not leading the ward handover.",
+            ),
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=Q_YEARS,
+                level="required",
+                source_ids=["exp1.b4"],
+                support="related",
+                priority=3,
+                rationale="Years of experience.",
+            ),
         ],
         questions=[ModelQuestion(requirement_quote=Q_ACLS, level="preferred", term="ACLS")],
     )
@@ -45,13 +69,27 @@ Q_REPORT = "Report weekly on campaign spend, conversion and revenue"
 
 def marketing_output() -> CoachModelOutput:
     return CoachModelOutput(
-        mode="suggestions", focus="Digital Marketing Manager",
+        mode="suggestions",
+        focus="Digital Marketing Manager",
         suggestions=[
-            ModelSuggestion(kind="promote", requirement_quote=Q_REPORT, level="required", source_ids=["exp1.b2"],
-                            support="direct", priority=1, rationale="Weekly reporting."),
-            ModelSuggestion(kind="promote", requirement_quote=Q_COMMUNICATION, level="required",
-                            source_ids=["exp1.b3"], support="related", priority=2,
-                            rationale="Related: briefing writers."),
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=Q_REPORT,
+                level="required",
+                source_ids=["exp1.b2"],
+                support="direct",
+                priority=1,
+                rationale="Weekly reporting.",
+            ),
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=Q_COMMUNICATION,
+                level="required",
+                source_ids=["exp1.b3"],
+                support="related",
+                priority=2,
+                rationale="Related: briefing writers.",
+            ),
         ],
     )
 
@@ -64,8 +102,18 @@ MECH_LICENSED_SUMMARY = "Licensed mechanical engineer with six years in product 
 
 def mech_output(summary: str) -> CoachModelOutput:
     return CoachModelOutput(
-        mode="suggestions", focus="Mechanical Design Engineer",
-        suggestions=[ModelSuggestion(kind="summary", requirement_quote=Q_DESIGN, level="required",
-                                     source_ids=["exp1.b1"], support="related", after=summary, priority=1,
-                                     rationale="Related: enclosure design.")],
+        mode="suggestions",
+        focus="Mechanical Design Engineer",
+        suggestions=[
+            ModelSuggestion(
+                kind="summary",
+                requirement_quote=Q_DESIGN,
+                level="required",
+                source_ids=["exp1.b1"],
+                support="related",
+                after=summary,
+                priority=1,
+                rationale="Related: enclosure design.",
+            )
+        ],
     )

@@ -1,4 +1,5 @@
 """CareerOrchestrator with a fake model: routing, delegation, provenance, failure handling, IT behaviour kept."""
+
 import asyncio
 
 import pytest
@@ -17,8 +18,12 @@ from app.services.llm_client import LLMTimeoutError
 from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.coach_scenarios import ai_output, tracks_output
 from tests.fixtures.general_fixtures import (
-    MARKETING_CV, MARKETING_JOB_DESCRIPTION, MARKETING_JOB_TITLE, NURSE_CV,
-    NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE,
+    MARKETING_CV,
+    MARKETING_JOB_DESCRIPTION,
+    MARKETING_JOB_TITLE,
+    NURSE_CV,
+    NURSE_JOB_DESCRIPTION,
+    NURSE_JOB_TITLE,
 )
 from tests.fixtures.general_scenarios import marketing_output, nurse_output
 from tests.test_coach_regression import RecordingLLM
@@ -35,6 +40,7 @@ def orchestrator_with(llm, *specialists) -> CareerOrchestrator:
 
 # ---- the IT specialist behaves exactly as when it was called directly
 
+
 def test_an_it_posting_gets_the_same_answer_as_the_it_agent_plus_provenance():
     direct = asyncio.run(IT_AGENT.analyze(CareerCase(CV, JOB_TITLE, JOB_DESCRIPTION, "AI"), RecordingLLM(ai_output())))
     llm = RecordingLLM(ai_output())
@@ -42,7 +48,7 @@ def test_an_it_posting_gets_the_same_answer_as_the_it_agent_plus_provenance():
     new = outcome.response().model_dump()
 
     meta = new.pop("meta")
-    assert new == direct.model_dump()  # every legacy field identical
+    assert new == direct.model_dump()  # every field except `meta` is identical
     assert len(llm.calls) == 1 and llm.calls[0][0] == IT_SYSTEM_PROMPT
     assert (meta["routing"]["primary"], meta["routing"]["method"]) == ("it", "rules")
     assert [(r["agent_id"], r["status"]) for r in meta["runs"]] == [("it", "ok")]
@@ -58,6 +64,7 @@ def test_the_choice_flow_still_costs_one_call_through_the_orchestrator():
 
 
 # ---- other occupations: the general agent analyses them, on the same engine
+
 
 def test_a_nurse_posting_is_answered_by_the_general_agent_with_its_own_prompt():
     llm = RecordingLLM(nurse_output())
@@ -91,6 +98,7 @@ def test_the_cv_does_not_change_the_routing():
 
 # ---- failures
 
+
 class Failing:
     def __init__(self, error: Exception):
         self.error, self.calls = error, 0
@@ -113,7 +121,9 @@ def test_a_specialist_that_breaks_is_replaced_by_the_general_agent_and_the_run_s
     outcome = run(orchestrator, CV, "Backend Developer", JOB_DESCRIPTION, "AI")
 
     assert [(r.agent_id, r.status, r.error_code) for r in outcome.runs] == [
-        ("it", "failed", "agent_error"), ("general", "ok", "")]
+        ("it", "failed", "agent_error"),
+        ("general", "ok", ""),
+    ]
     assert outcome.routing.primary == "general" and outcome.routing.method == "fallback"
     assert "agent_failed:it" in outcome.routing.reasons
     assert set(outcome.provenance.values()) == {"general"}
@@ -138,6 +148,7 @@ def test_a_failing_general_analysis_is_not_asked_twice():
 
 # ---- a new specialist needs no change to the orchestrator, the router or the engine
 
+
 def test_a_newly_registered_specialist_runs_on_the_real_engine_with_its_own_prompt_input_and_gate():
     reject_promotes = Gate("legal_rule", lambda ctx, p: True, frozenset({"promote"}))
     legal = career_agent("legal", "Legal", "lawyer", prompt="You are the legal test coach.", gates=(reject_promotes,))
@@ -146,9 +157,20 @@ def test_a_newly_registered_specialist_runs_on_the_real_engine_with_its_own_prom
 
     quote = "Review supplier contracts"
     posting = f"Corporate Lawyer\n\nWhat you will do\n- {quote}\n"
-    output = CoachModelOutput(mode="suggestions", suggestions=[
-        ModelSuggestion(kind="promote", requirement_quote=quote, level="required", source_ids=["exp1.b4"],
-                        support="related", priority=1, rationale="r")])
+    output = CoachModelOutput(
+        mode="suggestions",
+        suggestions=[
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote=quote,
+                level="required",
+                source_ids=["exp1.b4"],
+                support="related",
+                priority=1,
+                rationale="r",
+            )
+        ],
+    )
     llm = RecordingLLM(output)
     outcome = run(CareerOrchestrator(registry, GENERAL_AGENT, llm), CV, "Corporate Lawyer", posting, "Contracts")
 

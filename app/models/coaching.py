@@ -1,11 +1,12 @@
 """
-Models for the IT Career Coach: what the model may say (CoachModelOutput), what
+Models for the career coach: what the model may say (CoachModelOutput), what
 the API returns after our own checks (CoachResult), and the decisions the user
 makes about suggestions.
 
 Everything the model returns is only a proposal. Ids and CV text come from the
 CV itself, and nothing reaches the user's CV without the user's decision.
 """
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field

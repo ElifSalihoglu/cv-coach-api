@@ -5,6 +5,7 @@ holds it separately, as the agent for whatever no specialist clearly claims.
 Adding a domain means registering one more specialist (see `assembly.py`); the orchestrator, the
 router and the engine only ever ask the registry, so none of them changes.
 """
+
 import re
 from typing import Iterable
 

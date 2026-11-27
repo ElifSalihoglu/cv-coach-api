@@ -1,13 +1,14 @@
-"""POST /v1/coach/analyze through the orchestrator: routing hints, `meta`, errors, old clients."""
+"""POST /v1/coach/analyze through the orchestrator: routing hints, `meta`, errors, requests without routing fields."""
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.routes_coach import get_orchestrator
 from app.careers.assembly import build_orchestrator
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
-from tests.fixtures.general_fixtures import NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE
 from app.main import app
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.coach_scenarios import ai_output
+from tests.fixtures.general_fixtures import NURSE_CV, NURSE_JOB_DESCRIPTION, NURSE_JOB_TITLE
 from tests.fixtures.general_scenarios import nurse_output
 from tests.test_coach_regression import RecordingLLM
 
@@ -34,7 +35,7 @@ def test_an_old_client_request_without_routing_fields_still_works_and_says_who_a
     body = response.json()
 
     assert response.status_code == 200
-    assert body["kind"] == "suggestions" and body["focus"] == "AI"  # the legacy contract
+    assert body["kind"] == "suggestions" and body["focus"] == "AI"  # the fields every client reads
     assert body["meta"]["routing"]["primary"] == "it"
     assert body["meta"]["runs"][0]["status"] == "ok"
     assert body["meta"]["provenance"]["summary"] == "it"
@@ -47,7 +48,12 @@ def test_a_posting_outside_it_is_answered_by_the_general_agent(monkeypatch, clie
 
     body = client.post("/v1/coach/analyze", json=NURSE_BODY).json()
     assert body["meta"]["routing"] == {
-        "primary": "general", "secondary": [], "method": "fallback", "confidence": "low", "reasons": ["no_clear_match"]}
+        "primary": "general",
+        "secondary": [],
+        "method": "fallback",
+        "confidence": "low",
+        "reasons": ["no_clear_match"],
+    }
     assert [s["id"] for s in body["suggestions"]] == ["summary", "promote:exp1.b2"]
 
 
@@ -60,7 +66,12 @@ def test_the_career_goal_helps_routing(monkeypatch, client):
     fake = RecordingLLM(ai_output())
     coach = build_orchestrator(fake)
     monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
-    body = {**IT_BODY, "job_title": "Team Member", "job_description": "Help the team.", "career_goal": "Backend developer"}
+    body = {
+        **IT_BODY,
+        "job_title": "Team Member",
+        "job_description": "Help the team.",
+        "career_goal": "Backend developer",
+    }
     assert client.post("/v1/coach/analyze", json=body).json()["meta"]["routing"]["primary"] == "it"
 
 

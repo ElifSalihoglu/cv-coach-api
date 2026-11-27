@@ -5,6 +5,7 @@ Works on bytes in memory only: nothing is written to disk and the CV text is
 never logged. The extracted text is shown to the user for review before any
 model sees it.
 """
+
 import io
 from pathlib import PurePath
 

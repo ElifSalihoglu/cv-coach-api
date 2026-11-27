@@ -6,6 +6,7 @@ so what leaves the system is reviewable in one file. The CV's name, email, phone
 location, links, dates and education are not offered here at all; a field that is not
 a building block here cannot be sent by accident.
 """
+
 import re
 from typing import Any
 

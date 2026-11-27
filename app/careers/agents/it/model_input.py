@@ -1,4 +1,5 @@
-"""What the IT agent sends to the model. Unchanged by the move to agents; a test pins it."""
+"""What the IT agent sends to the model. A test pins the exact payload."""
+
 from typing import Any
 
 from app.careers.agents.it.rules import offers_choice
@@ -6,9 +7,7 @@ from app.careers.core.minimize import experience_payload, project_payload
 from app.models.cv_document import StructuredCV
 
 
-def coach_input(
-    cv: StructuredCV, job_title: str, job_description: str, focus: str
-) -> dict[str, Any]:
+def it_input(cv: StructuredCV, job_title: str, job_description: str, focus: str) -> dict[str, Any]:
     """The payload sent to the model. No name, contact details, dates or education."""
     return {
         "job_title": job_title,

@@ -1,33 +1,34 @@
 """
-AgentEngine: the shared execution machinery every agent runs on. It is not an agent.
+AgentEngine: the shared execution every agent runs on. It is not an agent.
 
-One model call reads a posting against the confirmed CV and proposes what could be shown
-for it. The model only proposes; `build_result` is our own code and throws away anything it
-cannot back up (quotes that are not in the posting, ids that are not in the CV, claims the
-CV does not make) and fills every CV text from the CV itself. Nothing here changes the CV;
-the user decides (see services.coach_apply).
+One model call reads a posting against the confirmed CV and proposes what could be shown for it.
+The model only proposes: `build_result` drops anything the CV or the posting does not back up and
+fills every CV text from the CV itself. Nothing here changes the CV; the user decides.
 
-Who does what (no duplication with `LLMClient`):
+Division of work with `LLMClient`: the client owns the model call (chat messages, provider, JSON
+parsing, schema validation, `LLMError` mapping, call log). The engine owns what is sent, when to
+ask again, the evidence, faithfulness and domain gates, and the result. Model errors are not
+caught here; they reach the caller unchanged.
 
-- `LLMClient` owns the model call itself: it turns (system prompt, input dict) into chat
-  messages, calls the provider, parses the JSON, validates it against the output schema
-  (`CoachModelOutput`), maps provider failures to `LLMError`s, and logs the call.
-- `AgentEngine` owns everything around it: what is sent (`prepare`, built by the profile from
-  `core.minimize` blocks), when to ask again (`run`), what is kept (`build_result`: evidence
-  gates, faithfulness gates and the profile's domain gates, in that order), how the result is
-  built, and the result log line. It never catches model errors: they reach the caller unchanged.
-
-The engine holds no state and knows no field of work. Everything that differs between
-domains arrives in the `DomainProfile` argument (prompt, input, gates, lexicon, limits).
-Privacy: logs carry counts and reason codes only, never CV or posting text.
+The engine holds no state and knows no field of work: everything that differs between domains
+arrives in the `DomainProfile` argument. Logs carry counts and reason codes only, never CV text.
 """
+
 import logging
 from collections import Counter
 from typing import Any
 
 from app.careers.core.claims import cv_source_text, stem
 from app.careers.core.evidence import (
-    bullet_index, checked_support, fold, quote_in, slug, used_lines, word_set,
+    SourceLine,
+    bullet_index,
+    checked_support,
+    fold,
+    quote_in,
+    role_label,
+    slug,
+    used_lines,
+    word_set,
 )
 from app.careers.core.gates import CORE_GATES, GateContext, Proposal, first_rejection
 from app.careers.core.profile import DomainProfile
@@ -38,13 +39,13 @@ from app.models.coaching import (
     CoachResult,
     Evidence,
     FocusOption,
+    ModelSuggestion,
     Question,
     Requirement,
     SourceRef,
     Suggestion,
 )
 from app.models.cv_document import StructuredCV
-from app.services.cv_changes import _where
 from app.services.llm_client import ContentGenerator
 
 logger = logging.getLogger("app.coach")
@@ -83,8 +84,12 @@ class AgentEngine:
     # ------------------------------------------------------------ our checks
 
     def build_result(
-        self, profile: DomainProfile, cv: StructuredCV, job_description: str,
-        output: CoachModelOutput, focus: str = "",
+        self,
+        profile: DomainProfile,
+        cv: StructuredCV,
+        job_description: str,
+        output: CoachModelOutput,
+        focus: str = "",
     ) -> CoachResult:
         job_folded = fold(job_description)
         bullets = bullet_index(cv)
@@ -101,33 +106,63 @@ class AgentEngine:
         if not focus and output.mode == "choose_focus":
             tracks = self._tracks(cv, bullets, job_folded, output, drops)
             if len(tracks) >= 2:
-                log_event(logger, logging.INFO, "coach_result", kind="choose_focus",
-                          tracks=len(tracks), dropped=sum(drops.values()))
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "coach_result",
+                    kind="choose_focus",
+                    tracks=len(tracks),
+                    dropped=sum(drops.values()),
+                )
                 return CoachResult(
-                    kind="choose_focus", responsibilities=responsibilities,
-                    requirements=requirements, tracks=tracks,
-                    dropped=sum(drops.values()), dropped_reasons=dict(drops),
+                    kind="choose_focus",
+                    responsibilities=responsibilities,
+                    requirements=requirements,
+                    tracks=tracks,
+                    dropped=sum(drops.values()),
+                    dropped_reasons=dict(drops),
                 )
             # fewer than two real tracks: there is nothing to choose
 
         suggestions = self._suggestions(profile, cv, bullets, job_description, job_folded, output, focus, drops)
         questions = self._questions(profile, cv, job_folded, output, drops)
-        log_event(logger, logging.INFO, "coach_result", kind="suggestions",
-                  suggestions=len(suggestions), questions=len(questions), dropped=sum(drops.values()))
+        log_event(
+            logger,
+            logging.INFO,
+            "coach_result",
+            kind="suggestions",
+            suggestions=len(suggestions),
+            questions=len(questions),
+            dropped=sum(drops.values()),
+        )
         return CoachResult(
-            kind="suggestions", focus=focus or output.focus.strip(),
-            responsibilities=responsibilities, requirements=requirements,
-            suggestions=suggestions, questions=questions,
-            dropped=sum(drops.values()), dropped_reasons=dict(drops),
+            kind="suggestions",
+            focus=focus or output.focus.strip(),
+            responsibilities=responsibilities,
+            requirements=requirements,
+            suggestions=suggestions,
+            questions=questions,
+            dropped=sum(drops.values()),
+            dropped_reasons=dict(drops),
         )
 
     def _suggestions(
-        self, profile: DomainProfile, cv, bullets, job_description, job_folded, output, focus: str, drops: Counter
+        self,
+        profile: DomainProfile,
+        cv: StructuredCV,
+        bullets: dict[str, SourceLine],
+        job_description: str,
+        job_folded: str,
+        output: CoachModelOutput,
+        focus: str,
+        drops: Counter[str],
     ) -> list[Suggestion]:
         ctx = GateContext(
-            cv=cv, job_description=job_description,
+            cv=cv,
+            job_description=job_description,
             job_terms=profile.lexicon.skill_terms(job_description),
-            cv_text=cv_source_text(cv), lexicon=profile.lexicon,
+            cv_text=cv_source_text(cv),
+            lexicon=profile.lexicon,
         )
         # Order matters: the first gate that rejects names the reason.
         gates = (*profile.requirement_gates, *CORE_GATES, *profile.draft_gates)
@@ -143,67 +178,104 @@ class AgentEngine:
             if not sources:
                 drops["source_not_in_cv"] += 1
                 continue
-            quote, level = item.requirement_quote, item.level
             if kind == "summary":
                 sources = used_lines(cv, bullets, sources, item.after)  # show every line it draws on
             after = sources[0][1].text if kind == "promote" else item.after.strip()
             rejected = first_rejection(
-                gates, ctx, Proposal(kind=kind, quote=quote, after=after, sources=sources)
+                gates, ctx, Proposal(kind=kind, quote=item.requirement_quote, after=after, sources=sources)
             )
             if rejected:
                 drops[rejected] += 1
                 continue
-            refs = [
-                SourceRef(id=b.id, where=_where(exp, cv.experiences), text=b.text)
-                for exp, b, _ in sources
-            ]
-            # Only the lines count: a technology in the skills list proves no particular work.
-            support, rationale, _ = checked_support(
-                item.support, quote, [b.text for _, b, _ in sources], item.rationale,
-                ignore=frozenset(stem(t) for t in word_set(focus)),
-                lexicon=profile.lexicon,
-            )
-            common = dict(
-                requirement=quote, level=level, support=support,
-                rationale=rationale, priority=priority,
-            )
-
-            if kind == "promote":
-                _, bullet, position = sources[0]
-                suggestion = Suggestion(
-                    id=f"promote:{bullet.id}", kind="promote", sources=refs[:1],
-                    before=bullet.text, after=bullet.text, position=position, **common,
-                )
-            elif kind == "rewrite":
-                _, bullet, _ = sources[0]
-                suggestion = Suggestion(
-                    id=f"rewrite:{bullet.id}", kind="rewrite", sources=refs[:1],
-                    before=bullet.text, after=after, **common,
-                )
-            elif kind == "summary":
-                suggestion = Suggestion(
-                    id="summary", kind="summary", sources=refs,
-                    before=cv.summary, after=after, **common,
-                )
-            else:
+            suggestion = self._card(profile, cv, kind, item, sources, after, focus, priority)
+            if suggestion is None:
                 drops["unknown_kind"] += 1
                 continue
             candidates.append((priority, index, suggestion))
 
+        return self._select(profile, candidates, drops)
+
+    def _card(
+        self,
+        profile: DomainProfile,
+        cv: StructuredCV,
+        kind: str,
+        item: ModelSuggestion,
+        sources: list[SourceLine],
+        after: str,
+        focus: str,
+        priority: int,
+    ) -> Suggestion | None:
+        """The suggestion shown to the user, built from the CV's own lines; None for an unknown kind."""
+        refs = [SourceRef(id=b.id, where=role_label(exp, cv.experiences), text=b.text) for exp, b, _ in sources]
+        # Only the lines count: a technology in the skills list proves no particular work.
+        support, rationale = checked_support(
+            item.support,
+            item.requirement_quote,
+            [b.text for _, b, _ in sources],
+            item.rationale,
+            ignore=frozenset(stem(t) for t in word_set(focus)),
+            lexicon=profile.lexicon,
+        )
+        common = dict(
+            requirement=item.requirement_quote,
+            level=item.level,
+            support=support,
+            rationale=rationale,
+            priority=priority,
+        )
+        _, bullet, position = sources[0]
+        if kind == "promote":
+            return Suggestion(
+                id=f"promote:{bullet.id}",
+                kind="promote",
+                sources=refs[:1],
+                before=bullet.text,
+                after=bullet.text,
+                position=position,
+                **common,
+            )
+        if kind == "rewrite":
+            return Suggestion(
+                id=f"rewrite:{bullet.id}",
+                kind="rewrite",
+                sources=refs[:1],
+                before=bullet.text,
+                after=after,
+                **common,
+            )
+        if kind == "summary":
+            return Suggestion(id="summary", kind="summary", sources=refs, before=cv.summary, after=after, **common)
+        return None
+
+    def _select(
+        self, profile: DomainProfile, candidates: list[tuple[int, int, Suggestion]], drops: Counter[str]
+    ) -> list[Suggestion]:
+        """Best first, without duplicates, within the per-kind and total limits; priorities renumbered."""
         candidates.sort(key=lambda c: (c[0], c[1]))
         chosen: list[Suggestion] = []
         counts = {kind: 0 for kind in profile.limits.per_kind}
         for _, _, suggestion in candidates:
             duplicate = any(s.id == suggestion.id for s in chosen)
-            if (duplicate or counts[suggestion.kind] >= profile.limits.per_kind[suggestion.kind]
-                    or len(chosen) >= profile.limits.max_suggestions):
+            if (
+                duplicate
+                or counts[suggestion.kind] >= profile.limits.per_kind[suggestion.kind]
+                or len(chosen) >= profile.limits.max_suggestions
+            ):
                 drops["over_limit_or_duplicate"] += 1
                 continue
             counts[suggestion.kind] += 1
             chosen.append(suggestion.model_copy(update={"priority": len(chosen) + 1}))
         return chosen
 
-    def _questions(self, profile: DomainProfile, cv, job_folded, output, drops: Counter) -> list[Question]:
+    def _questions(
+        self,
+        profile: DomainProfile,
+        cv: StructuredCV,
+        job_folded: str,
+        output: CoachModelOutput,
+        drops: Counter[str],
+    ) -> list[Question]:
         cv_folded = fold(cv_source_text(cv))
         questions: list[Question] = []
         for item in output.questions:
@@ -224,13 +296,25 @@ class AgentEngine:
                 drops["too_many_questions"] += 1
                 continue
             wording = "requires" if item.level == "required" else "prefers"
-            questions.append(Question(
-                id=f"ask:{slug(term)}", requirement=item.requirement_quote, level=item.level, term=term,
-                text=f"The posting {wording} {term}. Your CV doesn't mention it. Have you used it?",
-            ))
+            questions.append(
+                Question(
+                    id=f"ask:{slug(term)}",
+                    requirement=item.requirement_quote,
+                    level=item.level,
+                    term=term,
+                    text=f"The posting {wording} {term}. Your CV doesn't mention it. Have you used it?",
+                )
+            )
         return questions
 
-    def _tracks(self, cv, bullets, job_folded, output, drops: Counter) -> list[FocusOption]:
+    def _tracks(
+        self,
+        cv: StructuredCV,
+        bullets: dict[str, SourceLine],
+        job_folded: str,
+        output: CoachModelOutput,
+        drops: Counter[str],
+    ) -> list[FocusOption]:
         tracks: list[FocusOption] = []
         seen: set[str] = set()
         for track in output.tracks:
@@ -243,18 +327,28 @@ class AgentEngine:
             for item in track.evidence:
                 if item.source_id in bullets and all(e.source_id != item.source_id for e in evidence):
                     exp, bullet, _ = bullets[item.source_id]
-                    evidence.append(Evidence(
-                        source_id=bullet.id, where=_where(exp, cv.experiences),
-                        text=bullet.text, why=item.why,
-                    ))
+                    evidence.append(
+                        Evidence(
+                            source_id=bullet.id,
+                            where=role_label(exp, cv.experiences),
+                            text=bullet.text,
+                            why=item.why,
+                        )
+                    )
                 else:
                     drops["evidence_not_in_cv"] += 1
             coverage = "strong" if len(evidence) >= 2 else "partial" if evidence else "none"
-            tracks.append(FocusOption(
-                id=track_slug, name=track.name, quote=track.quote, summary=track.summary,
-                coverage=coverage, evidence=evidence,
-                note=f"No explicit {track.name} experience found in your CV." if not evidence else "",
-            ))
+            tracks.append(
+                FocusOption(
+                    id=track_slug,
+                    name=track.name,
+                    quote=track.quote,
+                    summary=track.summary,
+                    coverage=coverage,
+                    evidence=evidence,
+                    note=f"No explicit {track.name} experience found in your CV." if not evidence else "",
+                )
+            )
         order = {"strong": 0, "partial": 1, "none": 2}
         # strongest evidence first; ties keep the posting's order (the sort is stable)
         tracks.sort(key=lambda t: (order[t.coverage], -len(t.evidence)))

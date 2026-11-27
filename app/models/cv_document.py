@@ -1,11 +1,12 @@
 """
 Structured CV models.
 
-StructuredCV is the single source for the preview and the PDF. The parsed CV
+StructuredCV is the single source for the UI and the PDF. The parsed CV
 (ParsedCV) comes from the model without ids; our own code assigns the stable
 ids, so a rewritten bullet can always be traced back to its source bullet and
 its employer.
 """
+
 from typing import Annotated, List
 
 from pydantic import BaseModel, ConfigDict, Field

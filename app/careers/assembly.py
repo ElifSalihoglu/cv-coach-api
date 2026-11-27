@@ -1,4 +1,5 @@
 """What this deployment is made of. Adding a domain: one import and one `register` line here."""
+
 from app.careers.agents.general import GENERAL_AGENT
 from app.careers.agents.it import IT_AGENT
 from app.careers.orchestrator import CareerOrchestrator

@@ -1,18 +1,29 @@
 """POST /v1/jobs/search: find jobs and descriptions without any model call."""
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1 import routes_cv
+from app.api.dependencies import get_llm_client
 from app.api.v1.routes_jobs import get_job_search
 from app.data_scraper.scraper import location_query
 from app.main import app
 from app.services.search_errors import HumanVerificationRequired, SearchTimeout
 
 RESULTS = [
-    {"title": "RAG Engineer", "company": "Acme", "location": "Berlin",
-     "url": "https://de.indeed.com/viewjob?jk=aaa", "full_description": "Build RAG systems."},
-    {"title": "Vision Engineer", "company": "Beta", "location": "Remote",
-     "url": "https://de.indeed.com/viewjob?jk=bbb", "full_description": ""},
+    {
+        "title": "RAG Engineer",
+        "company": "Acme",
+        "location": "Berlin",
+        "url": "https://de.indeed.com/viewjob?jk=aaa",
+        "full_description": "Build RAG systems.",
+    },
+    {
+        "title": "Vision Engineer",
+        "company": "Beta",
+        "location": "Remote",
+        "url": "https://de.indeed.com/viewjob?jk=bbb",
+        "full_description": "",
+    },
     {"title": "Broken card", "company": "", "location": "", "url": "", "full_description": ""},
 ]
 
@@ -20,9 +31,9 @@ RESULTS = [
 @pytest.fixture
 def post(monkeypatch):
     def boom():
-        raise AssertionError("searching must not touch the LLM coach")
+        raise AssertionError("searching must not request a model client")
 
-    monkeypatch.setattr(routes_cv, "get_cv_coach", boom)
+    monkeypatch.setitem(app.dependency_overrides, get_llm_client, boom)
 
     def run(search, **payload):
         monkeypatch.setitem(app.dependency_overrides, get_job_search, lambda: search)
@@ -68,11 +79,14 @@ def test_no_results_is_an_empty_list(post):
     assert post(lambda *a: []).json() == {"jobs": []}
 
 
-@pytest.mark.parametrize("error,status,code", [
-    (HumanVerificationRequired(), 503, "human_verification"),
-    (SearchTimeout(), 504, "search_timeout"),
-    (RuntimeError("boom"), 502, "search_failed"),
-])
+@pytest.mark.parametrize(
+    "error,status,code",
+    [
+        (HumanVerificationRequired(), 503, "human_verification"),
+        (SearchTimeout(), 504, "search_timeout"),
+        (RuntimeError("boom"), 502, "search_failed"),
+    ],
+)
 def test_search_failures_are_reported_with_a_code(post, error, status, code):
     def failing(*args):
         raise error
@@ -87,12 +101,15 @@ def test_invalid_request_is_422(post, payload):
     assert post(lambda *a: [], **payload).status_code == 422
 
 
-@pytest.mark.parametrize("city,country,expected", [
-    ("Berlin", "Germany", "Berlin, Germany"),
-    ("Berlin", "", "Berlin"),
-    ("remote", "", "remote"),
-    (" Berlin ", " ", "Berlin"),
-])
+@pytest.mark.parametrize(
+    "city,country,expected",
+    [
+        ("Berlin", "Germany", "Berlin, Germany"),
+        ("Berlin", "", "Berlin"),
+        ("remote", "", "remote"),
+        (" Berlin ", " ", "Berlin"),
+    ],
+)
 def test_location_query(city, country, expected):
     assert location_query(city, country) == expected
 

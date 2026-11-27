@@ -4,12 +4,13 @@ Summary cards: what the model wrote, what we keep, and what the user is shown.
 The three acceptance examples use the exact summaries from the saved live run
 (synthetic CV and posting), replayed offline: no model call.
 """
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION
-from app.models.coaching import CoachModelOutput, ModelSuggestion
-from app.models.cv_document import CVBullet
+
 from app.careers.agents.it import IT_PROFILE
 from app.careers.agents.it.rules import unsupported_design_claims
 from app.careers.core.engine import DEFAULT_ENGINE
+from app.models.coaching import CoachModelOutput, ModelSuggestion
+from app.models.cv_document import CVBullet
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION
 from tests.fixtures.coach_scenarios import Q_AI, Q_AI_EVAL, Q_PY
 
 # r2/python: the model claims design work the CV does not have (it only has integration)
@@ -29,9 +30,21 @@ AI_TWO_LINES = (
 
 
 def summary(after: str, quote: str, sources: list[str], support: str = "direct") -> CoachModelOutput:
-    return CoachModelOutput(mode="suggestions", suggestions=[ModelSuggestion(
-        kind="summary", requirement_quote=quote, level="required", source_ids=sources,
-        support=support, after=after, rationale="r", priority=1)])
+    return CoachModelOutput(
+        mode="suggestions",
+        suggestions=[
+            ModelSuggestion(
+                kind="summary",
+                requirement_quote=quote,
+                level="required",
+                source_ids=sources,
+                support=support,
+                after=after,
+                rationale="r",
+                priority=1,
+            )
+        ],
+    )
 
 
 def build(output: CoachModelOutput, cv=CV, focus: str = ""):
@@ -39,6 +52,7 @@ def build(output: CoachModelOutput, cv=CV, focus: str = ""):
 
 
 # ---- (1) integration experience only: "designing REST APIs" never reaches the user ----
+
 
 def test_a_designing_claim_without_a_design_line_in_the_cv_is_dropped():
     result = build(summary(PY_DESIGNING, Q_PY, ["exp2.b1"]), focus="Python Backend")
@@ -59,10 +73,12 @@ def test_a_technology_in_the_skills_list_is_not_design_work():
 
 # ---- (2) the CV really says the candidate designed APIs: the same claim stays ----
 
+
 def test_the_same_claim_is_kept_when_a_cv_line_says_apis_were_designed():
     cv = CV.model_copy(deep=True)
     cv.experiences[1].bullets[3] = CVBullet(
-        id="exp2.b4", text="Designed and maintained REST APIs and integrated partner webhooks for the operations team.")
+        id="exp2.b4", text="Designed and maintained REST APIs and integrated partner webhooks for the operations team."
+    )
 
     result = build(summary(PY_DESIGNING, Q_PY, ["exp2.b1"]), cv=cv, focus="Python Backend")
 
@@ -80,9 +96,12 @@ def test_designing_something_else_does_not_back_a_claim_about_apis():
 
 # ---- (3) invoice agent plus general model evaluation ----
 
+
 def test_a_summary_drawing_on_two_lines_shows_both_and_keeps_its_own_target():
-    (card,) = build(summary(AI_TWO_LINES, "AI: ship LLM features to production and keep agents and tools reliable.",
-                            ["exp1.b1"]), focus="AI").suggestions
+    (card,) = build(
+        summary(AI_TWO_LINES, "AI: ship LLM features to production and keep agents and tools reliable.", ["exp1.b1"]),
+        focus="AI",
+    ).suggestions
 
     assert [r.id for r in card.sources] == ["exp1.b1", "exp1.b4"]  # both lines are on the card
     assert card.requirement == "AI: ship LLM features to production and keep agents and tools reliable."
@@ -107,12 +126,13 @@ def test_a_summary_does_not_pick_up_unrelated_lines():
 
 
 def test_a_summary_is_never_moved_to_another_requirement():
-    # recorded r1/ai: the target used to be swapped for "evaluate LLM outputs ..." behind the user's back
+    # the summary stays aimed at the requirement it answers; it is never swapped for another one
     (card,) = build(summary(AI_TWO_LINES, Q_AI, ["exp1.b1"]), focus="AI").suggestions
     assert card.requirement == Q_AI
 
 
 # ---- the claim is judged by what was designed, not by a banned word ----
+
 
 def _cv_with(text: str):
     cv = CV.model_copy(deep=True)
@@ -134,7 +154,8 @@ def test_designing_a_different_thing_is_not_support_even_when_words_overlap():
     # "internal tools" is shared, but the CV line designed tools, not REST APIs
     cv = _cv_with("Designed internal tools for the operations team.")
     assert unsupported_design_claims("Designed internal REST APIs for the operations team.", cv) == [
-        "Designed internal REST APIs for the operations team"]
+        "Designed internal REST APIs for the operations team"
+    ]
     assert unsupported_design_claims("Designed internal tools for the operations team.", cv) == []
 
 

@@ -103,5 +103,5 @@ test that pins the exact payload keys and checks that no personal identifier is 
 
 7. Engineering agent (prompt, gates, lexicon, fixtures, its own cues in its card).
 8. Merger and parallel primary/secondary run (at most two agents): `RoutingDecision.secondary` and
-   `Orchestration.runs` are already in the API shape; `GeneralAgent.handle` runs one agent today.
+   `Orchestration.runs` are already in the API shape; `CareerOrchestrator.run` runs one agent today.
 9. LLM-based routing, designed from real needs when it is implemented (input: posting and target position only).

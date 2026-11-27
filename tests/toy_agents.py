@@ -3,6 +3,7 @@ Test-only agents. `career_agent` builds a REAL one (card + profile, run by the s
 tests that use it exercise the real AgentEngine with a fake model. `broken_agent` fails inside the
 engine, the way a bug in an agent's own code would.
 """
+
 from dataclasses import replace
 from typing import Any
 
@@ -16,10 +17,13 @@ from app.models.cv_document import StructuredCV
 def toy_input(cv: StructuredCV, job_title: str, job_description: str, focus: str) -> dict[str, Any]:
     """A deliberately different projection from IT's and General's: titles and bullet texts only."""
     return {
-        "title": job_title, "posting": job_description, "focus": focus,
+        "title": job_title,
+        "posting": job_description,
+        "focus": focus,
         "bullets": [
             {"id": b.id, "position": i, "text": b.text}
-            for exp in cv.experiences for i, b in enumerate(exp.bullets, start=1)
+            for exp in cv.experiences
+            for i, b in enumerate(exp.bullets, start=1)
         ],
     }
 

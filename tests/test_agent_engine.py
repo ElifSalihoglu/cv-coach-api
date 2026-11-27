@@ -4,6 +4,7 @@ AgentEngine: stateless, domain-agnostic, shared by every agent. Fake model only.
 Also the architecture boundaries that make "a new domain needs no engine, General-agent or router
 change" true: who may import whom, and that nothing leaks between concurrent requests.
 """
+
 import asyncio
 import copy
 import re
@@ -18,10 +19,10 @@ from app.careers.core.engine import DEFAULT_ENGINE, AgentEngine
 from app.careers.core.gates import Gate
 from app.careers.core.state import CareerCase
 from app.careers.orchestrator import CareerOrchestrator
-from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from app.models.coaching import CoachModelOutput, ModelSuggestion
 from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 from app.services.llm_client import LLMOutputError, LLMTimeoutError
+from tests.fixtures.coach_fixture import CV, JOB_DESCRIPTION, JOB_TITLE
 from tests.fixtures.coach_scenarios import ai_output, tracks_output
 from tests.test_coach_regression import RecordingLLM
 from tests.toy_agents import career_agent
@@ -36,11 +37,12 @@ def run(profile, llm, focus="AI", engine=DEFAULT_ENGINE):
 
 # ---- what the engine does, in order
 
+
 def test_the_engine_sends_the_profiles_prompt_and_input_and_returns_the_checked_result():
     llm = RecordingLLM(ai_output())
     result = run(IT_PROFILE, llm)
 
-    (system_prompt, user_content), = llm.calls
+    ((system_prompt, user_content),) = llm.calls
     assert system_prompt == IT_PROFILE.system_prompt
     assert user_content == IT_PROFILE.build_input(CV, JOB_TITLE, JOB_DESCRIPTION, "AI")
     assert [s.id for s in result.suggestions] == ["summary", "promote:exp1.b4", "promote:exp1.b2"]
@@ -73,9 +75,19 @@ def test_model_errors_reach_the_caller_unchanged():
 def test_domain_rules_enter_only_through_the_profile_and_run_after_the_shared_gates():
     never = Gate("profile_rule", lambda ctx, p: True, frozenset({"promote"}))
     with_rule = career_agent("x", "X", gates=(never,)).profile
-    output = CoachModelOutput(suggestions=[ModelSuggestion(
-        kind="promote", requirement_quote="ship LLM features to production and keep agents and tools reliable",
-        level="required", source_ids=["exp1.b4"], support="related", priority=1, rationale="r")])
+    output = CoachModelOutput(
+        suggestions=[
+            ModelSuggestion(
+                kind="promote",
+                requirement_quote="ship LLM features to production and keep agents and tools reliable",
+                level="required",
+                source_ids=["exp1.b4"],
+                support="related",
+                priority=1,
+                rationale="r",
+            )
+        ]
+    )
 
     kept = DEFAULT_ENGINE.build_result(career_agent("y", "Y").profile, CV, JOB_DESCRIPTION, output, "AI")
     refused = DEFAULT_ENGINE.build_result(with_rule, CV, JOB_DESCRIPTION, output, "AI")
@@ -84,6 +96,7 @@ def test_domain_rules_enter_only_through_the_profile_and_run_after_the_shared_ga
 
 
 # ---- one engine for everybody, holding nothing
+
 
 def test_every_agent_runs_on_the_same_stateless_engine():
     assert vars(DEFAULT_ENGINE) == {} and vars(AgentEngine()) == {}  # nothing is kept between requests
@@ -120,11 +133,20 @@ def test_the_orchestrator_router_and_registry_name_no_concrete_domain():
 
 # ---- concurrent requests share the engine and must not share anything else
 
+
 def _cv(n: int) -> StructuredCV:
     return StructuredCV(
-        name=f"Person{n}", email=f"person{n}@example.com", summary=f"Professional number {n}.",
-        experiences=[CVExperience(id="exp1", title="Role", employer=f"Firm{n}", bullets=[
-            CVBullet(id=f"exp1.b{i}", text=f"Did task {i} marker{n} for the team.") for i in range(1, 4)])],
+        name=f"Person{n}",
+        email=f"person{n}@example.com",
+        summary=f"Professional number {n}.",
+        experiences=[
+            CVExperience(
+                id="exp1",
+                title="Role",
+                employer=f"Firm{n}",
+                bullets=[CVBullet(id=f"exp1.b{i}", text=f"Did task {i} marker{n} for the team.") for i in range(1, 4)],
+            )
+        ],
     )
 
 
@@ -140,9 +162,19 @@ class EchoLLM:
         posting = user_content.get("job_description") or user_content.get("posting")
         quote = [line[2:] for line in posting.splitlines() if line.startswith("- ")][0]
         await asyncio.sleep(0)
-        return CoachModelOutput(suggestions=[ModelSuggestion(
-            kind="promote", requirement_quote=quote, level="required", source_ids=["exp1.b2"],
-            support="related", priority=1, rationale=f"echo {system_prompt[:20]}")])
+        return CoachModelOutput(
+            suggestions=[
+                ModelSuggestion(
+                    kind="promote",
+                    requirement_quote=quote,
+                    level="required",
+                    source_ids=["exp1.b2"],
+                    support="related",
+                    priority=1,
+                    rationale=f"echo {system_prompt[:20]}",
+                )
+            ]
+        )
 
 
 def test_many_concurrent_requests_through_one_orchestrator_never_see_each_others_data():
@@ -166,7 +198,7 @@ def test_many_concurrent_requests_through_one_orchestrator_never_see_each_others
     for n, outcome in enumerate(outcomes):
         assert outcome.routing.primary == ["it", "general", "legal"][n % 3]
         (suggestion,) = outcome.result.suggestions
-        assert suggestion.requirement == f"Handle token{n} duties"       # its own posting
+        assert suggestion.requirement == f"Handle token{n} duties"  # its own posting
         assert suggestion.sources[0].text == f"Did task 2 marker{n} for the team."  # its own CV
     for payload in llm.seen:  # what went to the model carries one request's data only
         text = str(payload)

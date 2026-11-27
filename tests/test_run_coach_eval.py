@@ -4,6 +4,7 @@ scripts/run_coach_eval.py, checked without a single paid call.
 The real OpenAI client class is replaced by one that fails the test if it is ever built, except in
 the tests that give it a scripted stand-in.
 """
+
 import argparse
 import asyncio
 from types import SimpleNamespace
@@ -65,8 +66,11 @@ class ScriptedClient:
         type(self).calls += 1
         content = type(self).answers.pop(0).model_dump_json()
         message = SimpleNamespace(content=content, refusal=None)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")],
-                               usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1), model="fake")
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=message, finish_reason="stop")],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1),
+            model="fake",
+        )
 
 
 def scripted(monkeypatch):

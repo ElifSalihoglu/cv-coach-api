@@ -1,4 +1,5 @@
 """What makes one domain agent different from another, as data and small functions."""
+
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -17,9 +18,9 @@ class PipelineLimits:
 @dataclass(frozen=True)
 class DomainProfile:
     """
-    Everything the shared pipeline needs to know about a field of work.
+    Everything the engine needs to know about a field of work.
 
-    - `system_prompt`: written for this field's postings and CVs, not a renamed copy.
+    - `system_prompt`: written for this field's postings and CVs.
     - `build_input`: the model input. Built only from core.minimize building blocks.
     - `offers_choice`: does a posting of this field ask the applicant to pick a track?
     - `requirement_gates`: run first, on what the posting asks for (e.g. a generic condition).

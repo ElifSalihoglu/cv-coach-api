@@ -7,12 +7,18 @@ not retried with another agent: they reach the caller unchanged. Any other agent
 by the general agent once. It knows specialists only through the registry, so adding a domain
 changes none of this.
 """
+
 import logging
 import time
 
 from app.careers.core.agent import CareerAgent
 from app.careers.core.state import (
-    AgentRun, CareerCase, Orchestration, OrchestrationError, RoutingDecision, RoutingSignals,
+    AgentRun,
+    CareerCase,
+    Orchestration,
+    OrchestrationError,
+    RoutingDecision,
+    RoutingSignals,
 )
 from app.careers.registry import AgentRegistry, name_key
 from app.careers.router import DefaultRouter
@@ -42,8 +48,7 @@ class CareerOrchestrator:
         self._router = DefaultRouter(general.card)
 
     async def run(self, case: CareerCase) -> Orchestration:
-        routing = self._router.route(
-            RoutingSignals.from_case(case), self._registry, override=case.domain_override)
+        routing = self._router.route(RoutingSignals.from_case(case), self._registry, override=case.domain_override)
         outcome = Orchestration(case=case, routing=routing)
 
         agent = self._general if routing.primary == self._general.card.id else self._registry.get(routing.primary)
@@ -68,20 +73,31 @@ class CareerOrchestrator:
             result = await agent.analyze(case, self._llm)
         except Exception as exc:  # recorded here; what to do about it is decided in `run`
             code = exc.reason_code if isinstance(exc, LLMError) else "agent_error"
-            run = AgentRun(agent_id=agent.card.id, status="failed", error_code=code,
-                           duration_ms=round((time.perf_counter() - started) * 1000))
-            log_event(logger, logging.WARNING, "coach_agent_run", agent=run.agent_id,
-                      status="failed", reason=code, duration_ms=run.duration_ms)
+            run = AgentRun(
+                agent_id=agent.card.id,
+                status="failed",
+                error_code=code,
+                duration_ms=round((time.perf_counter() - started) * 1000),
+            )
+            log_event(
+                logger,
+                logging.WARNING,
+                "coach_agent_run",
+                agent=run.agent_id,
+                status="failed",
+                reason=code,
+                duration_ms=run.duration_ms,
+            )
             return run, None, exc
-        run = AgentRun(agent_id=agent.card.id, status="ok",
-                       duration_ms=round((time.perf_counter() - started) * 1000))
-        log_event(logger, logging.INFO, "coach_agent_run", agent=run.agent_id,
-                  status="ok", duration_ms=run.duration_ms)
+        run = AgentRun(agent_id=agent.card.id, status="ok", duration_ms=round((time.perf_counter() - started) * 1000))
+        log_event(logger, logging.INFO, "coach_agent_run", agent=run.agent_id, status="ok", duration_ms=run.duration_ms)
         return run, result, None
 
     async def _answer_with_general(self, outcome: Orchestration, failed_id: str) -> Orchestration:
         outcome.routing = RoutingDecision(
-            primary=self._general.card.id, method="fallback", confidence="low",
+            primary=self._general.card.id,
+            method="fallback",
+            confidence="low",
             reasons=(*outcome.routing.reasons, f"agent_failed:{failed_id}"),
         )
         run, result, failure = await self._run_agent(self._general, outcome.case)

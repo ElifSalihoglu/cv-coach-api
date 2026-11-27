@@ -15,10 +15,7 @@ class HumanVerificationRequired(JobSearchError):
     """The job board asked for a human check. We stop and never try to pass it."""
 
     reason_code = "human_verification"
-    user_message = (
-        "Indeed insan doğrulaması istediği için arama durdu. "
-        "CV’n bu oturumda hazır."
-    )
+    user_message = "Indeed insan doğrulaması istediği için arama durdu. CV’n bu oturumda hazır."
 
 
 class SearchTimeout(JobSearchError):

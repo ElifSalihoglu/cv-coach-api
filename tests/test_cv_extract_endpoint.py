@@ -1,13 +1,14 @@
 """POST /v1/cv/extract-text: PDF, DOCX and TXT to plain text, with no model call."""
+
 import io
 
 import pytest
 from docx import Document
 from fastapi.testclient import TestClient
 
-from app.api.v1 import routes_cv
+from app.api.dependencies import get_llm_client
 from app.main import app
-from app.models.cv_document import CVExperience, CVBullet, StructuredCV
+from app.models.cv_document import CVBullet, CVExperience, StructuredCV
 from app.services.cv_extract import MAX_CV_BYTES
 from app.services.cv_render import render_pdf
 
@@ -17,9 +18,9 @@ TURKISH_LINE = "Elçin Yıldız — Yazılım Mühendisi, İstanbul, Şişli"
 @pytest.fixture
 def client(monkeypatch) -> TestClient:
     def boom():
-        raise AssertionError("extract-text must not touch the LLM coach")
+        raise AssertionError("extract-text must not request a model client")
 
-    monkeypatch.setattr(routes_cv, "get_cv_coach", boom)
+    monkeypatch.setitem(app.dependency_overrides, get_llm_client, boom)
     return TestClient(app)
 
 
@@ -54,10 +55,14 @@ def test_pdf_text(client):
     cv = StructuredCV(
         name="Elçin Yıldız",
         summary="Uçtan uca makine öğrenmesi mühendisi.",
-        experiences=[CVExperience(
-            id="exp1", employer="Örnek A.Ş.", title="Mühendis",
-            bullets=[CVBullet(id="exp1.b1", text="Şirket içi araçlar geliştirdi.")],
-        )],
+        experiences=[
+            CVExperience(
+                id="exp1",
+                employer="Örnek A.Ş.",
+                title="Mühendis",
+                bullets=[CVBullet(id="exp1.b1", text="Şirket içi araçlar geliştirdi.")],
+            )
+        ],
     )
     response = _upload(client, "cv.pdf", render_pdf(cv))
     assert response.status_code == 200
