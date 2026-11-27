@@ -85,18 +85,6 @@ class CVOptimizeResponse(BaseModel):
         default_factory=list,
         description="Similar job listings used during RAG.",
     )
-    
-class JobListing(BaseModel):
-    """
-    Internal model representing one job listing loaded from the local CSV file.
-    This is used by the RAG pipeline to work with typed objects instead of raw dicts.
-    """
-
-    title: str = Field(..., description="Job title from the scraped dataset.")
-    company_name: str = Field(..., description="Company name from the job listing.")
-    location: str = Field(..., description="Location string from the job listing.")
-    url: str = Field(..., description="URL pointing to the job listing page.")
-
 
 class SearchResultJob(BaseModel):
     """One card from a job-board search result page (no full description yet)."""

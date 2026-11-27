@@ -55,9 +55,9 @@ def extract_text(filename: str, data: bytes) -> str:
         if suffix == ".txt":
             return _decode_txt(data)
         if suffix == ".pdf":
-            import PyPDF2
+            from pypdf import PdfReader
 
-            reader = PyPDF2.PdfReader(io.BytesIO(data))
+            reader = PdfReader(io.BytesIO(data))
             return "\n".join(page.extract_text() or "" for page in reader.pages)
         from docx import Document
 

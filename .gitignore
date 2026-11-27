@@ -1,10 +1,9 @@
 .venv
 __pycache__
 *.pyc
-.data/
-data/index/
 .env
 .env.*
 !.env.example
 node_modules/
 frontend/dist/
+evals/results/

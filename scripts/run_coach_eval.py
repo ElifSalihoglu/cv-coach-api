@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import openai
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from app.evals.fingerprint import agent_fingerprint
 from app.evals.coach_fixture import (

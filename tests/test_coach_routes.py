@@ -4,7 +4,7 @@ import re
 
 import pytest
 from fastapi.testclient import TestClient
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from app.api.v1 import routes_coach
 from app.api.v1.routes_coach import get_job_coach

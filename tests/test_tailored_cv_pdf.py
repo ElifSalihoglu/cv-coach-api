@@ -11,7 +11,7 @@ import io
 import re
 
 import pytest
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from app.models.cv_document import ParsedCV, StructuredCV, TailoredContent
 from app.models.schemas import MatchedJob

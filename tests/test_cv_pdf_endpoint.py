@@ -5,7 +5,7 @@ from urllib.parse import unquote
 
 import pytest
 from fastapi.testclient import TestClient
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 from app.api.v1 import routes_cv
 from app.main import app
