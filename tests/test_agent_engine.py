@@ -156,6 +156,13 @@ class EchoLLM:
     def __init__(self):
         self.seen: list[dict] = []
 
+    async def choose_tool(self, system_prompt, user_content, tools, steps=()):
+        await asyncio.sleep(0)
+        if steps:
+            return None
+        title = user_content["job_title"]
+        return {"Backend Developer": "ask_it", "Corporate Lawyer": "ask_legal"}.get(title)
+
     async def generate(self, system_prompt, user_content, output_model=None):
         self.seen.append(user_content)
         await asyncio.sleep(0)  # let the other requests run in between

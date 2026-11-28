@@ -68,9 +68,9 @@ export interface Question { id: string; requirement: string; level: Level; term:
 
 export interface RoutingDecision {
   primary: string; // agent id
-  method: "override" | "rules" | "fallback";
+  method: "override" | "delegation" | "fallback";
   confidence: "high" | "low";
-  reasons: string[]; // codes such as "title_cue:software engineer" or "agent_failed:it"
+  reasons: string[]; // codes such as "delegated:it" or "agent_failed:it"
 }
 export interface AgentRun { agent_id: string; status: "ok" | "failed"; duration_ms: number; error_code: string }
 

@@ -201,10 +201,10 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
       "meta": {
         "routing": {
           "primary": "it",
-          "method": "rules",
+          "method": "delegation",
           "confidence": "high",
           "reasons": [
-            "title_cue:ai"
+            "delegated:it"
           ]
         },
         "runs": [

@@ -51,14 +51,16 @@ from tests.fixtures.coach_scenarios import (
     python_output,
     tracks_output,
 )
+from tests.fixtures.fake_tools import ChoosesTool
 
 GOLDEN = Path(__file__).parent / "golden" / "coach_regression.json"
 
 
-class RecordingLLM:
+class RecordingLLM(ChoosesTool):
     """A fake model that records exactly what the coach sends."""
 
-    def __init__(self, *outputs: CoachModelOutput):
+    def __init__(self, *outputs: CoachModelOutput, tool: str | None = None):
+        self.tool = tool
         self.outputs = list(outputs)
         self.calls: list[tuple[str, dict]] = []
 

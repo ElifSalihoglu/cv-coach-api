@@ -16,9 +16,9 @@ from app.careers.registry import (
 from tests.toy_agents import career_agent
 
 
-def test_the_default_registry_holds_the_it_specialist_and_not_the_general_agent():
+def test_the_default_registry_holds_the_four_specialists_and_not_the_general_agent():
     registry = build_default_registry()
-    assert [c.id for c in registry.cards()] == ["it"]
+    assert [c.id for c in registry.cards()] == ["it", "healthcare", "hr", "finance"]
     assert registry.get("it") is IT_AGENT
     assert not registry.has(GENERAL_CARD.id)
     assert isinstance(build_orchestrator(llm=None), CareerOrchestrator)  # the orchestrator owns the registry
@@ -67,7 +67,7 @@ def test_unknown_agent_and_unknown_domain_are_reported_not_guessed():
         registry.get("plumbing")
     with pytest.raises(UnknownDomainError) as caught:
         registry.resolve("Plumbing")
-    assert caught.value.available == ["it"]
+    assert caught.value.available == ["finance", "healthcare", "hr", "it"]
 
 
 def test_a_specialist_is_found_by_id_or_by_name_whatever_the_case():

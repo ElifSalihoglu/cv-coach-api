@@ -1,8 +1,8 @@
 """
 What an agent is given, how it describes itself, and what the orchestration records.
 
-Routing reads `RoutingSignals`, which has no CV field: the CV cannot influence which agent
-is chosen, by construction.
+The General agent chooses a specialist from the posting and the target position alone; the CV is
+not part of that decision.
 """
 
 from dataclasses import dataclass, field
@@ -27,27 +27,13 @@ class CareerCase:
 
 
 @dataclass(frozen=True)
-class RoutingSignals:
-    """The only inputs of routing: the posting and the target position. Never the CV."""
-
-    job_title: str
-    job_description: str
-    career_goal: str = ""
-
-    @classmethod
-    def from_case(cls, case: CareerCase) -> "RoutingSignals":
-        return cls(case.job_title, case.job_description, case.career_goal)
-
-
-@dataclass(frozen=True)
 class AgentCard:
     """
     Who an agent is, as the registry and the router see it.
 
-    `routing_cues` are the few phrases this agent itself claims as a clear sign of its
-    field (matched in the job title or target position). They live with the agent, so a
-    new agent brings its own cues and no central occupation list exists. The general agent
-    has none: it is chosen when nothing else clearly fits.
+    `routing_cues` are example job titles of this agent's field. They live with the agent and
+    are shown to the General agent in the description of the agent's tool, so a new agent
+    brings its own and no central occupation list exists. The general agent has none.
     """
 
     id: str  # "it"
@@ -69,7 +55,7 @@ class OrchestrationError(Exception):
 
 class RoutingDecision(BaseModel):
     primary: str  # agent id
-    method: Literal["override", "rules", "fallback"]
+    method: Literal["override", "delegation", "fallback"]
     confidence: Literal["high", "low"]
     reasons: tuple[str, ...] = ()  # short codes, e.g. "title_cue:software engineer"
 

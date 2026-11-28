@@ -8,6 +8,7 @@ from app.models.coaching import (
     ModelSuggestion,
     ModelTrack,
 )
+from tests.fixtures.fake_tools import ChoosesTool
 
 Q_AI = "ship LLM features to production and keep agents and tools reliable"
 Q_AI_EVAL = "You evaluate LLM outputs with test sets and monitor quality in production"
@@ -155,10 +156,11 @@ def python_output() -> CoachModelOutput:
     )
 
 
-class FakeLLM:
+class FakeLLM(ChoosesTool):
     """Stands in for the language model and counts how often it is called."""
 
-    def __init__(self, *outputs: CoachModelOutput):
+    def __init__(self, *outputs: CoachModelOutput, tool: str | None = None):
+        self.tool = tool
         self.outputs = list(outputs)
         self.calls: list[dict] = []
 

@@ -1,6 +1,8 @@
 import type { CoachMeta } from "../types";
 
-const AGENT_NAMES: Record<string, string> = { it: "IT agent", general: "General agent" };
+const AGENT_NAMES: Record<string, string> = {
+  it: "IT agent", healthcare: "Healthcare agent", hr: "HR agent", finance: "Finance agent", general: "General agent",
+};
 export const agentName = (id: string) => AGENT_NAMES[id] ?? id;
 
 /** Why the checks removed a proposal, in the user's words. Keys are the API's reason codes. */
@@ -29,14 +31,16 @@ const DROP_REASONS: Record<string, string> = {
 function routingText(meta: CoachMeta): string[] {
   const { routing } = meta;
   const lines: string[] = [];
-  const failed = routing.reasons.find((r) => r.startsWith("agent_failed:"));
-  if (failed) {
-    lines.push(`The ${agentName(failed.split(":")[1])} could not finish, so the ${agentName(routing.primary)} answered instead.`);
+  const failed = routing.reasons.filter((r) => r.startsWith("agent_failed:")).map((r) => agentName(r.split(":")[1]));
+  const called = routing.reasons.filter((r) => r.startsWith("delegated:")).map((r) => agentName(r.split(":")[1]));
+  if (failed.length) {
+    lines.push(`The ${failed.join(" and the ")} could not finish, so the ${agentName(routing.primary)} answered instead.`);
   } else if (routing.method === "override") {
     lines.push("You chose this agent.");
-  } else if (routing.method === "rules") {
-    const cues = routing.reasons.filter((r) => r.startsWith("title_cue:")).map((r) => `“${r.slice("title_cue:".length)}”`);
-    lines.push(`The job title or goal matched ${cues.join(", ")}.`);
+  } else if (routing.method === "delegation" && called.length > 1) {
+    lines.push(`The General agent called the ${called.join(" and the ")} and combined their results.`);
+  } else if (routing.method === "delegation") {
+    lines.push(`The General agent handed this posting to the ${agentName(routing.primary)}.`);
   } else {
     lines.push("No specialist agent clearly matched this posting, so the General agent analysed it.");
   }
@@ -55,8 +59,20 @@ export function AgentPanel({ meta, dropped, droppedReasons }: Props) {
     <section className="agent-panel" aria-label="How this analysis was made">
       {meta && (
         <p className="agent-line">
-          <span className="tag">Agent</span> <strong>{agentName(meta.routing.primary)}</strong>
+          <span className="tag">Answered by</span> <strong>{agentName(meta.routing.primary)}</strong>
           <span className="muted"> · {routingText(meta).join(" ")}</span>
+        </p>
+      )}
+      {meta && meta.runs.length > 0 && (
+        <p className="agent-line" aria-label="Agents called">
+          <span className="tag">Called</span>{" "}
+          {meta.runs.map((run, i) => (
+            <span key={`${run.agent_id}-${i}`} className={run.status === "ok" ? "" : "muted"}>
+              {i > 0 && " · "}
+              {agentName(run.agent_id)}
+              {run.status === "ok" ? "" : " (failed)"}
+            </span>
+          ))}
         </p>
       )}
       <p className="agent-line">

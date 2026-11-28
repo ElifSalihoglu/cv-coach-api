@@ -88,7 +88,7 @@ test("the panel names the agent and the posting words that chose it", async () =
 
   const panel = await agentPanel();
   expect(panel).toHaveTextContent("IT agent");
-  expect(panel).toHaveTextContent("matched “ai”");
+  expect(panel).toHaveTextContent("handed this posting");
   expect(panel).toHaveTextContent("Every proposal from the model passed our checks.");
 });
 
@@ -130,6 +130,66 @@ test("a specialist that failed is reported, and the agent that answered instead 
   await submitPosting(user);
   const panel = await agentPanel();
   expect(panel).toHaveTextContent("The IT agent could not finish, so the General agent answered instead.");
+});
+
+test("several specialists: the panel lists every agent that was called and says the results were combined", async () => {
+  const user = userEvent.setup();
+  const multi: CoachMeta = {
+    routing: { primary: "general", method: "delegation", confidence: "high", reasons: ["delegated:it", "delegated:healthcare"] },
+    runs: [
+      { agent_id: "it", status: "ok", duration_ms: 5, error_code: "" },
+      { agent_id: "healthcare", status: "ok", duration_ms: 7, error_code: "" },
+    ],
+    provenance: {},
+  };
+  api.once("/v1/coach/analyze", () => json(coachResult({ meta: multi })));
+  renderApp("/");
+  await confirmCv(user);
+  await submitPosting(user, { title: "AI Engineer, Healthcare" });
+
+  const panel = await agentPanel();
+  expect(panel).toHaveTextContent("The General agent called the IT agent and the Healthcare agent and combined their results.");
+  expect(within(panel).getByLabelText("Agents called")).toHaveTextContent("IT agent · Healthcare agent");
+});
+
+test("a called agent that failed is marked in the list of agents called", async () => {
+  const user = userEvent.setup();
+  const partial: CoachMeta = {
+    routing: { primary: "it", method: "delegation", confidence: "high", reasons: ["delegated:it", "delegated:hr"] },
+    runs: [
+      { agent_id: "it", status: "ok", duration_ms: 5, error_code: "" },
+      { agent_id: "hr", status: "failed", duration_ms: 1, error_code: "agent_error" },
+    ],
+    provenance: {},
+  };
+  api.once("/v1/coach/analyze", () => json(coachResult({ meta: partial })));
+  renderApp("/");
+  await confirmCv(user);
+  await submitPosting(user);
+  expect(within(await agentPanel()).getByLabelText("Agents called")).toHaveTextContent("IT agent · HR agent (failed)");
+});
+
+test("the agent choices come from the API's registry, so a new specialist appears without a UI change", async () => {
+  const user = userEvent.setup();
+  renderApp("/");
+  await confirmCv(user);
+  const select = await screen.findByLabelText(/^Agent/);
+  await waitFor(() => expect(within(select).getAllByRole("option")).toHaveLength(6));
+  expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual([
+    "Automatic (recommended)", "Information technology agent", "Healthcare agent", "Human resources agent",
+    "Finance agent", "General agent (any other field)",
+  ]);
+});
+
+test("if the list of agents cannot be loaded the form still offers automatic and the General agent", async () => {
+  const user = userEvent.setup();
+  api.once("/v1/coach/agents", () => { throw new TypeError("offline"); });
+  renderApp("/");
+  await confirmCv(user);
+  const select = await screen.findByLabelText(/^Agent/);
+  expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual([
+    "Automatic (recommended)", "General agent (any other field)",
+  ]);
 });
 
 test("what the checks removed is counted and explained in plain words", async () => {

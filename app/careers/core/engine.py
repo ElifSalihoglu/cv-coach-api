@@ -16,7 +16,7 @@ arrives in the `DomainProfile` argument. Logs carry counts and reason codes only
 
 import logging
 from collections import Counter
-from typing import Any
+from typing import Any, Sequence
 
 from app.careers.core.claims import cv_source_text, stem
 from app.careers.core.evidence import (
@@ -145,6 +145,105 @@ class AgentEngine:
             dropped=sum(drops.values()),
             dropped_reasons=dict(drops),
         )
+
+    # ------------------------------------------------------------ several specialists, one answer
+
+    def merge(
+        self,
+        parts: Sequence[tuple[str, DomainProfile, CoachResult]],
+        case: CareerCase,
+        limits: DomainProfile,
+    ) -> tuple[CoachResult, dict[str, str]]:
+        """
+        One answer from the results of several specialists, and which agent each item came from.
+
+        Nothing is written by a model here: the items are the specialists' own, in the order the agents
+        were called (the first agent keeps an item both produced). Every item is checked again against
+        the posting and the CV with the gates of the agent that produced it, then the caps of `limits`
+        (the General agent's profile) are applied. What no longer passes is dropped and counted.
+        """
+        job_folded = fold(case.job_description)
+        bullets = bullet_index(case.cv)
+        cv_text = cv_source_text(case.cv)
+        drops: Counter[str] = Counter()
+        origin: dict[str, str] = {}
+        candidates: list[tuple[int, int, Suggestion]] = []
+        questions: list[Question] = []
+        requirements: dict[str, Requirement] = {}
+        responsibilities: list[str] = []
+
+        for agent_id, profile, result in parts:
+            drops.update(result.dropped_reasons)
+            ctx = GateContext(
+                cv=case.cv,
+                job_description=case.job_description,
+                job_terms=profile.lexicon.skill_terms(case.job_description),
+                cv_text=cv_text,
+                lexicon=profile.lexicon,
+            )
+            gates = (*profile.requirement_gates, *CORE_GATES, *profile.draft_gates)
+            for req in result.requirements:
+                if quote_in(job_folded, req.quote):
+                    requirements.setdefault(fold(req.text), req)
+            responsibilities += [r for r in result.responsibilities if r not in responsibilities]
+            for item in result.suggestions:
+                if item.id in origin:
+                    drops["over_limit_or_duplicate"] += 1
+                    continue
+                lines = [bullets.get(ref.id) for ref in item.sources]
+                intact = lines and all(
+                    line is not None and line[1].text == ref.text for line, ref in zip(lines, item.sources)
+                )
+                if not intact or not quote_in(job_folded, item.requirement):
+                    drops["merge_evidence_lost"] += 1
+                    continue
+                rejected = first_rejection(
+                    gates, ctx, Proposal(item.kind, item.requirement, item.after, [line for line in lines if line])
+                )
+                if rejected:
+                    drops[rejected] += 1
+                    continue
+                origin[item.id] = agent_id
+                candidates.append((item.priority, len(candidates), item))
+            cv_folded = fold(cv_text)
+            for q in result.questions:
+                term = fold(q.term)
+                valid = (
+                    quote_in(job_folded, q.requirement)
+                    and term in fold(q.requirement)
+                    and term not in cv_folded
+                    and all(q.id != other.id for other in questions)
+                )
+                if not valid:
+                    drops["question_not_grounded"] += 1
+                elif len(questions) >= limits.limits.max_questions:
+                    drops["too_many_questions"] += 1
+                else:
+                    questions.append(q)
+                    origin[q.id] = agent_id
+
+        suggestions = self._select(limits, candidates, drops)
+        kept = {s.id for s in suggestions} | {q.id for q in questions}
+        merged = CoachResult(
+            kind="suggestions",
+            focus=next((r.focus for _, _, r in parts if r.focus), ""),
+            responsibilities=responsibilities[:8],
+            requirements=list(requirements.values()),
+            suggestions=suggestions,
+            questions=questions,
+            dropped=sum(drops.values()),
+            dropped_reasons=dict(drops),
+        )
+        log_event(
+            logger,
+            logging.INFO,
+            "coach_merge",
+            agents=len(parts),
+            suggestions=len(suggestions),
+            questions=len(questions),
+            dropped=merged.dropped,
+        )
+        return merged, {item_id: agent for item_id, agent in origin.items() if item_id in kept}
 
     def _suggestions(
         self,

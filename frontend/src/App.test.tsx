@@ -55,7 +55,7 @@ test("demo: the panel names the agent, why it was chosen, and what the checks re
 
   const panel = screen.getByRole("region", { name: "How this analysis was made" });
   expect(panel).toHaveTextContent("IT agent");
-  expect(panel).toHaveTextContent(/matched “ai”/);
+  expect(panel).toHaveTextContent(/handed this posting/);
   expect(panel).toHaveTextContent(/removed 2 proposals/);
   expect(within(panel).getByText(/a claim your CV does not support/)).toBeInTheDocument();
   expect(within(panel).getByText(/a requirement that is not in the posting/)).toBeInTheDocument();

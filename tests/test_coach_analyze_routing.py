@@ -18,7 +18,7 @@ NURSE_BODY = {"cv": NURSE_CV.model_dump(), "job_title": NURSE_JOB_TITLE, "job_de
 
 @pytest.fixture
 def llm(monkeypatch):
-    fake = RecordingLLM(ai_output())
+    fake = RecordingLLM(ai_output(), tool="ask_it")
     coach = build_orchestrator(fake)
     monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
     return fake
@@ -61,8 +61,8 @@ def test_the_optional_domain_forces_an_agent_and_the_career_goal_is_a_routing_hi
     assert forced["meta"]["routing"]["method"] == "override" and forced["meta"]["routing"]["primary"] == "general"
 
 
-def test_the_career_goal_helps_routing(monkeypatch, client):
-    fake = RecordingLLM(ai_output())
+def test_the_career_goal_is_part_of_the_delegation_decision(monkeypatch, client):
+    fake = RecordingLLM(ai_output(), tool="ask_it")
     coach = build_orchestrator(fake)
     monkeypatch.setitem(app.dependency_overrides, get_orchestrator, lambda: coach)
     body = {
@@ -72,16 +72,31 @@ def test_the_career_goal_helps_routing(monkeypatch, client):
         "career_goal": "Backend developer",
     }
     assert client.post("/v1/coach/analyze", json=body).json()["meta"]["routing"]["primary"] == "it"
+    assert fake.tool_calls[0][1]["career_goal"] == "Backend developer"  # the General agent sees the goal
 
 
 def test_an_unknown_domain_is_422_with_the_available_ones_and_no_model_call(llm, client):
     response = client.post("/v1/coach/analyze", json={**IT_BODY, "domain": "plumbing"})
     detail = response.json()["detail"]
     assert response.status_code == 422
-    assert detail["code"] == "unknown_domain" and detail["available"] == ["general", "it"]
+    assert detail["code"] == "unknown_domain" and detail["available"] == [
+        "finance",
+        "general",
+        "healthcare",
+        "hr",
+        "it",
+    ]
     assert llm.calls == []
 
 
 def test_too_long_routing_fields_are_rejected(llm, client):
     assert client.post("/v1/coach/analyze", json={**IT_BODY, "domain": "x" * 41}).status_code == 422
     assert client.post("/v1/coach/analyze", json={**IT_BODY, "career_goal": "x" * 201}).status_code == 422
+
+
+def test_the_agents_endpoint_lists_the_registry_and_the_general_agent_and_every_listed_id_is_accepted(llm, client):
+    listed = client.get("/v1/coach/agents").json()
+    assert [a["id"] for a in listed] == ["it", "healthcare", "hr", "finance", "general"]
+    assert all(a["domain"] and a["description"] for a in listed)
+    for agent in listed:  # the options the UI offers are exactly what `domain` accepts
+        assert client.post("/v1/coach/analyze", json={**IT_BODY, "domain": agent["id"]}).status_code == 200

@@ -133,3 +133,12 @@ def cv_source_text(cv: StructuredCV) -> str:
         parts += [cert.name, cert.issuer]
     parts += cv.languages
     return "\n".join(p for p in parts if p)
+
+
+def unlisted_roots(pattern: re.Pattern[str], text: str, source: str) -> list[str]:
+    """
+    The word roots `pattern` finds in `text` that it never finds in `source`. `pattern` has one group:
+    the root ("diagnos" for "diagnosed"). A domain's own claim gates are built on this.
+    """
+    have = {m.group(1).casefold() for m in pattern.finditer(source or "")}
+    return sorted({m.group(1).casefold() for m in pattern.finditer(text or "")} - have)

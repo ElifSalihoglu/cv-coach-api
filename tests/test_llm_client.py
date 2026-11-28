@@ -12,6 +12,7 @@ from app.services.llm_client import (
     LLMOutputError,
     LLMTimeoutError,
     LLMUnavailableError,
+    ToolSpec,
 )
 
 
@@ -115,3 +116,47 @@ def test_generate_raises_timeout_error_on_openai_timeout():
 def test_generate_raises_unavailable_error_on_provider_failure(error):
     with pytest.raises(LLMUnavailableError):
         run_generate(error=error)
+
+
+# ---- tool calling (the General agent's delegation decision)
+
+TOOLS = [ToolSpec("ask_it", "Hand this posting to the IT specialist.")]
+
+
+def choose(tool_calls=None, **fake_kwargs):
+    fake_openai, completions = make_fake_openai(**fake_kwargs)
+    original = completions.create
+
+    async def create(**kwargs):
+        response = await original(**kwargs)
+        response.choices[0].message.tool_calls = tool_calls
+        return response
+
+    completions.create = create
+    client = LLMClient(openai_client=fake_openai, model="test-model")
+    answer = asyncio.run(client.choose_tool("prompt", {"job_title": "Engineer"}, TOOLS))
+    return answer, completions
+
+
+def test_choose_tool_returns_the_name_of_the_called_tool_and_sends_the_tools_without_json_mode():
+    calls = [SimpleNamespace(function=SimpleNamespace(name="ask_it", arguments="{}"))]
+    answer, completions = choose(tool_calls=calls)
+
+    sent = completions.calls[0]
+    assert answer == "ask_it"
+    assert sent["tool_choice"] == "auto" and "response_format" not in sent
+    assert sent["tools"][0]["function"]["name"] == "ask_it"
+    assert sent["tools"][0]["function"]["parameters"]["properties"] == {}
+
+
+def test_choose_tool_returns_none_when_the_model_answers_without_a_tool():
+    assert choose(tool_calls=None, content="I will handle it myself.")[0] is None
+    assert choose(tool_calls=[])[0] is None
+
+
+def test_choose_tool_maps_provider_errors_and_refusals_like_generate():
+    with pytest.raises(LLMTimeoutError):
+        choose(error=openai.APITimeoutError(request=FAKE_REQUEST))
+    with pytest.raises(LLMOutputError) as caught:
+        choose(refusal="no")
+    assert caught.value.reason_code == "llm_refusal"

@@ -33,9 +33,9 @@ export const RICH_CV: StructuredCV = {
 
 export const POSTING_TEXT = "Acme builds agents. You will ship LLM features.";
 
-/** The routing the API reports for an IT posting matched by rules. */
+/** The routing the API reports for an IT posting delegated by the General agent. */
 export const IT_META: CoachMeta = {
-  routing: { primary: "it", method: "rules", confidence: "high", reasons: ["title_cue:ai"] },
+  routing: { primary: "it", method: "delegation", confidence: "high", reasons: ["delegated:it"] },
   runs: [{ agent_id: "it", status: "ok", duration_ms: 12, error_code: "" }],
   provenance: {},
 };
@@ -134,6 +134,14 @@ export function fakeApi(options: { cv?: StructuredCV } = {}) {
   const defaults: Record<string, (body: any) => Response> = {
     "/v1/cv/extract-text": () => json({ filename: "cv.txt", text: "Kerem Aydın\nBackend developer" }),
     "/v1/cv/parse": () => json({ cv: options.cv ?? MY_CV, warnings: [] }),
+    "/v1/coach/agents": () =>
+      json([
+        { id: "it", domain: "Information technology", description: "IT" },
+        { id: "healthcare", domain: "Healthcare", description: "Care" },
+        { id: "hr", domain: "Human resources", description: "People" },
+        { id: "finance", domain: "Finance", description: "Money" },
+        { id: "general", domain: "General career", description: "Any" },
+      ]),
     "/v1/coach/analyze": () => json(coachResult()),
     "/v1/coach/apply": (body) => json(fakeApply(body)),
     "/v1/coach/check": (body) =>

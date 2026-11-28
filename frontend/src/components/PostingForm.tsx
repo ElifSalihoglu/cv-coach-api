@@ -1,12 +1,19 @@
-import { useState, type FormEvent } from "react";
-import type { AnalyzeOptions } from "../api";
+import { useEffect, useState, type FormEvent } from "react";
+import { fetchAgents, type AgentOption, type AnalyzeOptions } from "../api";
 
-/** "" lets the API choose; the others force an agent by its id. */
-const AGENT_CHOICES = [
-  { value: "", label: "Automatic (recommended)" },
-  { value: "it", label: "IT agent" },
-  { value: "general", label: "General agent (any other field)" },
-];
+/** What the form offers if the API's list of agents cannot be loaded. */
+const FALLBACK_AGENTS: AgentOption[] = [{ id: "general", domain: "General career", description: "" }];
+
+/** "" lets the General agent choose; the others force an agent by its id (the list comes from the API's registry). */
+function agentChoices(agents: AgentOption[]) {
+  return [
+    { value: "", label: "Automatic (recommended)" },
+    ...agents.map((a) => ({
+      value: a.id,
+      label: a.id === "general" ? "General agent (any other field)" : `${a.domain} agent`,
+    })),
+  ];
+}
 
 interface Props {
   disabled?: boolean;
@@ -20,6 +27,13 @@ export function PostingForm({ disabled = false, onSubmit }: Props) {
   const [careerGoal, setCareerGoal] = useState("");
   const [company, setCompany] = useState("");
   const [domain, setDomain] = useState("");
+  const [agents, setAgents] = useState<AgentOption[]>(FALLBACK_AGENTS);
+
+  useEffect(() => {
+    let active = true;
+    fetchAgents().then((list) => active && setAgents(list), () => {});
+    return () => { active = false; };
+  }, []);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -51,7 +65,7 @@ export function PostingForm({ disabled = false, onSubmit }: Props) {
         <label className="field">
           <span>Career goal (optional)</span>
           <input value={careerGoal} onChange={(e) => setCareerGoal(e.target.value)} placeholder="e.g. Backend developer" />
-          <small className="muted">Used only to choose the agent; it is not sent to the language model.</small>
+          <small className="muted">Helps the General agent choose specialists; sent to the language model with the posting, never with your CV.</small>
         </label>
         <label className="field">
           <span>Company (optional)</span>
@@ -61,17 +75,17 @@ export function PostingForm({ disabled = false, onSubmit }: Props) {
       <label className="field narrow">
         <span>Agent</span>
         <select value={domain} onChange={(e) => setDomain(e.target.value)}>
-          {AGENT_CHOICES.map((c) => (
+          {agentChoices(agents).map((c) => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
-        <small className="muted">Automatic reads the posting. Pick one only to override it.</small>
+        <small className="muted">Automatic lets the General agent read the posting and call up to two specialists. Pick one only to override it.</small>
       </label>
       <div className="actions">
         <button type="submit" className="primary" disabled={disabled || !title.trim() || !description.trim()}>
           Analyze posting
         </button>
-        <span className="muted small">One language-model call. Nothing changes in your CV until you accept it.</span>
+        <span className="muted small">A few language-model calls (at most 8). Nothing changes in your CV until you accept it.</span>
       </div>
     </form>
   );

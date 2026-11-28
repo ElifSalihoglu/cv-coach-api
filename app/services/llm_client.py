@@ -1,7 +1,8 @@
 import json
 import logging
 import time
-from typing import Any, Protocol, TypeVar
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Protocol, Sequence, TypeVar
 
 import openai
 from pydantic import BaseModel, ValidationError
@@ -13,12 +14,40 @@ logger = logging.getLogger("app.llm")
 TEMPERATURE = 0.3
 
 T = TypeVar("T", bound=BaseModel)
+R = TypeVar("R")
+
+
+@dataclass(frozen=True)
+class ToolSpec:
+    """A tool the model may call. Delegation tools take no arguments: calling one is the decision."""
+
+    name: str
+    description: str
+
+
+@dataclass(frozen=True)
+class ToolStep:
+    """One finished tool call: the model called `name` and `result` (a short JSON summary) came back."""
+
+    name: str
+    call_id: str
+    result: str
 
 
 class ContentGenerator(Protocol):
     """What the agents need from a model client; `LLMClient` is the real one, tests pass fakes."""
 
     async def generate(self, system_prompt: str, user_content: dict[str, Any], output_model: type[T]) -> T: ...
+
+    async def choose_tool(
+        self,
+        system_prompt: str,
+        user_content: dict[str, Any],
+        tools: Sequence[ToolSpec],
+        steps: Sequence[ToolStep] = (),
+    ) -> str | None:
+        """The name of the next tool the model calls, or None when it is done. `steps` are the calls so far."""
+        ...
 
 
 class LLMError(Exception):
@@ -70,9 +99,28 @@ class LLMClient:
         user_content: dict[str, Any],
         output_model: type[T],
     ) -> T:
-        started = time.perf_counter()
         # ensure_ascii=False keeps Turkish characters as they are in the prompt.
         user_message = json.dumps(user_content, ensure_ascii=False)
+        return await self._logged(
+            len(system_prompt) + len(user_message),
+            lambda details: self._generate(system_prompt, user_message, details, output_model),
+        )
+
+    async def choose_tool(
+        self,
+        system_prompt: str,
+        user_content: dict[str, Any],
+        tools: Sequence[ToolSpec],
+        steps: Sequence[ToolStep] = (),
+    ) -> str | None:
+        user_message = json.dumps(user_content, ensure_ascii=False)
+        return await self._logged(
+            len(system_prompt) + len(user_message) + sum(len(s.result) for s in steps),
+            lambda details: self._choose_tool(system_prompt, user_message, tools, steps, details),
+        )
+
+    async def _logged(self, input_chars: int, call: Callable[[dict[str, object]], Awaitable[R]]) -> R:
+        started = time.perf_counter()
         # Sizes and settings only, never the prompt or the content itself.
         log_event(
             logger,
@@ -80,11 +128,11 @@ class LLMClient:
             "llm_call_start",
             model=self._model,
             temperature=TEMPERATURE,
-            input_chars=len(system_prompt) + len(user_message),
+            input_chars=input_chars,
         )
         details: dict[str, object] = {}
         try:
-            result = await self._generate(system_prompt, user_message, details, output_model)
+            result = await call(details)
         except LLMError as exc:
             # The single place where an LLM failure is logged.
             log_event(
@@ -109,23 +157,10 @@ class LLMClient:
         )
         return result
 
-    async def _generate(
-        self,
-        system_prompt: str,
-        user_message: str,
-        details: dict[str, object],
-        output_model: type[T],
-    ) -> T:
+    async def _create(self, details: dict[str, object], **request: Any) -> Any:
+        """The provider call: errors mapped to ours, usage and finish reason noted for the log."""
         try:
-            response = await self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                response_format={"type": "json_object"},
-                temperature=TEMPERATURE,
-            )
+            response = await self._client.chat.completions.create(model=self._model, temperature=TEMPERATURE, **request)
         # APITimeoutError is a subclass of APIConnectionError, so it must come first.
         except openai.APITimeoutError as exc:
             raise LLMTimeoutError("The language model did not respond in time.") from exc
@@ -141,7 +176,6 @@ class LLMClient:
             value = getattr(usage, attr, None)
             if isinstance(value, int):
                 details[key] = value
-
         choice = response.choices[0]
         # "length" means the answer was cut off, a common cause of invalid output.
         finish_reason = getattr(choice, "finish_reason", None)
@@ -150,8 +184,62 @@ class LLMClient:
         served_model = getattr(response, "model", None)
         if isinstance(served_model, str):
             details["served_model"] = served_model
+        return choice.message
 
-        message = choice.message
+    async def _choose_tool(
+        self,
+        system_prompt: str,
+        user_message: str,
+        tools: Sequence[ToolSpec],
+        steps: Sequence[ToolStep],
+        details: dict[str, object],
+    ) -> str | None:
+        history: list[dict[str, Any]] = []
+        for step in steps:  # each finished call goes back as an assistant tool call and its tool message
+            call = {"id": step.call_id, "type": "function", "function": {"name": step.name, "arguments": "{}"}}
+            history.append({"role": "assistant", "content": None, "tool_calls": [call]})
+            history.append({"role": "tool", "tool_call_id": step.call_id, "content": step.result})
+        message = await self._create(
+            details,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+                *history,
+            ],
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+                    },
+                }
+                for t in tools
+            ],
+            tool_choice="auto",
+            parallel_tool_calls=False,
+        )
+        if getattr(message, "refusal", None):
+            raise LLMOutputError(f"The language model refused: {message.refusal}", "llm_refusal")
+        calls = getattr(message, "tool_calls", None) or []
+        return calls[0].function.name if calls else None
+
+    async def _generate(
+        self,
+        system_prompt: str,
+        user_message: str,
+        details: dict[str, object],
+        output_model: type[T],
+    ) -> T:
+        message = await self._create(
+            details,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            response_format={"type": "json_object"},
+        )
         if getattr(message, "refusal", None):
             raise LLMOutputError(f"The language model refused: {message.refusal}", "llm_refusal")
         if not message.content:

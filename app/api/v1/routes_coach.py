@@ -2,9 +2,11 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.api.dependencies import get_llm_client, llm_http_error
-from app.careers.assembly import build_orchestrator
+from app.careers.agents.general import GENERAL_CARD
+from app.careers.assembly import build_default_registry, build_orchestrator
 from app.careers.core.state import CareerCase, CoachResponse, OrchestrationError
 from app.careers.orchestrator import CareerOrchestrator
 from app.careers.registry import UnknownDomainError
@@ -35,15 +37,28 @@ def _decision_error(exc: DecisionError) -> HTTPException:
     return HTTPException(status_code=422, detail=detail)
 
 
+class AgentInfo(BaseModel):
+    id: str
+    domain: str
+    description: str
+
+
+@router.get("/agents", response_model=list[AgentInfo])
+def agents() -> list[AgentInfo]:
+    """The agents a request may name in `domain`: every registered specialist, then the General agent."""
+    cards = [*build_default_registry().cards(), GENERAL_CARD]
+    return [AgentInfo(id=c.id, domain=c.domain, description=c.description) for c in cards]
+
+
 @router.post("/analyze", response_model=CoachResponse)
 async def analyze(
     request: CoachRequest,
     orchestrator: Annotated[CareerOrchestrator | None, Depends(get_orchestrator)],
 ) -> CoachResponse:
     """
-    One model call. Without a focus the answer is either suggestions (a clear
-    posting) or the tracks to choose from; with a focus it is suggestions.
-    The agent is chosen from the posting (or forced with `domain`); `meta` says which one answered.
+    Without a focus the answer is either suggestions (a clear posting) or the tracks to choose from;
+    with a focus it is suggestions. The General agent decides with tool calling which specialists to
+    call, at most two (or `domain` names one agent and skips that decision); `meta` says who answered.
     """
     if orchestrator is None:
         raise HTTPException(status_code=503, detail="The career coach is unavailable.")

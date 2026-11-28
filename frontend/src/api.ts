@@ -85,6 +85,14 @@ export async function parseCv(cvText: string): Promise<ParsedCv> {
   return { cv: body.cv, warnings: body.warnings ?? [] };
 }
 
+export interface AgentOption { id: string; domain: string; description: string }
+
+/** The agents a request may name: the registered specialists, then the General agent. */
+export async function fetchAgents(): Promise<AgentOption[]> {
+  const response = await request("/v1/coach/agents");
+  return (await response.json()) as AgentOption[];
+}
+
 export interface AnalyzeOptions {
   posting: Posting;
   /** An agent id to force; "" lets the API choose. */
